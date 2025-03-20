@@ -24,8 +24,8 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 	return &config, nil
 }
 
-func ToJSONString(config *models.FileConfig) (string, error) {
-	jsonBytes, err := json.MarshalIndent(config, "", "  ")
+func ToJSONString(data interface{}) (string, error) {
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return "", err
 	}
