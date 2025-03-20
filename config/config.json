@@ -6,11 +6,12 @@
   },
   "entities": [
     {
-      "name": "customers",
+      "name": "customer",
       "fields": [
         { "name": "id", "type": "uuid", "auto_increment": true },
         { "name": "email", "type": "string", "format": "email" },
         { "name": "phonenumber", "type": "string", "format": "phone" },
+        { "name": "created_at", "type": "timestamp", "format": "yyMMdd HH:mm:ss" },
         { "name": "customerstatus", "type": "integer" }
       ]
     },
