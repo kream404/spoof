@@ -1,0 +1,30 @@
+{
+  "config": {
+    "delimiter": "|",
+    "rowcount": "500",
+    "include_headers": false
+  },
+  "entities": [
+    {
+      "name": "customers",
+      "fields": [
+        { "name": "id", "type": "uuid", "auto_increment": true },
+        { "name": "email", "type": "string", "format": "email" },
+        { "name": "phonenumber", "type": "string", "format": "phone" },
+        { "name": "customerstatus", "type": "integer" }
+      ]
+    },
+    {
+      "name": "orders",
+      "fields": [
+        { "name": "id", "type": "uuid" },
+        {
+          "name": "customer_id",
+          "type": "uuid",
+          "foreign_key": "customers.id"
+        },
+        { "name": "amount", "type": "float", "min": 10.0, "max": 1000.0 }
+      ]
+    }
+  ]
+}
