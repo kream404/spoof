@@ -32,7 +32,9 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-			fakers.NewUUIDFaker().Generate();
+			var uuid = fakers.NewUUIDFaker();
+			uuid.Generate();
+			fmt.Println(uuid.GetType());
 			// print(json.ToJSONString(config))
 			// print(json.ToJSONString(config.Entities[0]))
 		}

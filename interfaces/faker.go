@@ -8,7 +8,7 @@ var datatype models.Type;
 
 type Faker[T any] interface {
 	Generate() (T, error);
-		GetType() models.Type;
+	GetType() models.Type;
 }
 
 func getType() models.Type{
