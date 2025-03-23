@@ -7,7 +7,8 @@ import (
 )
 
 type UUIDFaker struct {
-	datatype models.Type
+	datatype models.Type;
+	format string;
 }
 
 func (f *UUIDFaker) Generate() (uuid.UUID, error) {
@@ -23,8 +24,13 @@ func (f *UUIDFaker) GetType() models.Type {
 	return f.datatype
 }
 
+func (f *UUIDFaker) GetFormat() string {
+	return f.format
+}
+
 func NewUUIDFaker() *UUIDFaker {
 	return &UUIDFaker{
 		datatype: models.Type("uuid.UUID"),
+		format: "Format not supported for UUID",
 	}
 }

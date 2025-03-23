@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kream404/scratch/fakers"
 	"github.com/kream404/scratch/models"
 	"github.com/kream404/scratch/services/json"
 	"github.com/spf13/cobra"
-	"github.com/kream404/scratch/fakers"
 )
 
 var config_path string
@@ -32,9 +32,10 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-			var uuid = fakers.NewUUIDFaker();
+			uuid := fakers.NewUUIDFaker();
 			uuid.Generate();
 			fmt.Println(uuid.GetType());
+			fmt.Println(uuid.GetFormat());
 			// print(json.ToJSONString(config))
 			// print(json.ToJSONString(config.Entities[0]))
 		}
