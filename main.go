@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-    cmd.Execute()
+ 	// usage: go run main.go --config ./config/config.json --verbose
+	cmd.Execute()
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/kream404/scratch/models"
 	"github.com/kream404/scratch/services/json"
 	"github.com/spf13/cobra"
+	"github.com/kream404/scratch/fakers"
 )
 
 var config_path string
@@ -28,11 +29,12 @@ var rootCmd = &cobra.Command{
 
 		config, _ := json.LoadConfig(config_path)
 
-		if verbose && config_path != "" {
-			fmt.Println("=================================")
+		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-			print(json.ToJSONString(config))
+			fakers.NewUUIDFaker().Generate();
+			// print(json.ToJSONString(config))
+			// print(json.ToJSONString(config.Entities[0]))
 		}
 
 	},
