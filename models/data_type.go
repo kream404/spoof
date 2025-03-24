@@ -10,6 +10,8 @@ const (
 	Timestamp Type = "Timestamp"
 	Int       Type = "Int"
 	UUID      Type = "UUID"
+	Email      Type = "Email"
+
 
 )
 

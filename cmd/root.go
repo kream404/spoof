@@ -33,9 +33,12 @@ var rootCmd = &cobra.Command{
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			uuid := fakers.NewUUIDFaker();
+			email := fakers.NewEmailFaker()
 			uuid.Generate();
 			fmt.Println(uuid.GetType());
 			fmt.Println(uuid.GetFormat());
+
+			email.Generate();
 			// print(json.ToJSONString(config))
 			// print(json.ToJSONString(config.Entities[0]))
 		}
