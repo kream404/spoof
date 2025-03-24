@@ -61,3 +61,10 @@ func RandomString(length int) string {
 	}
 	return string(result)
 }
+
+func init() {
+	RegisterFaker("EmailFaker", &EmailFaker{
+		datatype: models.Type("Email"),
+		format:   "",
+	})
+}

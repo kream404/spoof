@@ -38,17 +38,38 @@ var rootCmd = &cobra.Command{
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			uuid := fakers.NewUUIDFaker();
-			email := fakers.NewEmailFaker();
-			phone := fakers.NewPhoneFaker();
+
 
 			uuid.Generate();
 			fmt.Println(uuid.GetType());
 			fmt.Println(uuid.GetFormat());
 
-			email.Generate();
-			phone.Generate();
-			// print(json.ToJSONString(config))
-			// print(json.ToJSONString(config.Entities[0]))
+			test := [2]string{"PhoneFaker", "EmailFaker"}
+
+
+			for i := 0; i < len(test); i++ {
+				//basic factory pattern that will be iterated over for generation
+				// Retrieve the correct faker implementation by name
+				faker, found := fakers.GetFakerByName(test[i])
+				if found {
+					switch f := faker.(type) {
+					case *fakers.PhoneFaker:
+						// Call Generate on PhoneFaker
+						f.Generate()
+					case *fakers.EmailFaker:
+						// Call Generate on EmailFaker
+						f.Generate()
+					default:
+						fmt.Printf("Unknown faker type for: %s\n", test[i])
+					}
+				} else {
+					fmt.Printf("Faker not found: %s\n", test[i])
+				}
+			}
+			// email.Generate();
+			// phone.Generate();
+			// // print(json.ToJSONString(config))
+			// // print(json.ToJSONString(config.Entities[0]))
 		}
 
 		if(scaffold && scaffold_name != ""){
