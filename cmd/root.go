@@ -7,11 +7,14 @@ import (
 	"github.com/kream404/scratch/fakers"
 	"github.com/kream404/scratch/models"
 	"github.com/kream404/scratch/services/json"
+
 	"github.com/spf13/cobra"
 )
 
 var config_path string
 var config models.FileConfig
+var scaffold string
+var scaffold_name string
 
 var rootCmd = &cobra.Command{
 	Use:   "scratch", // This is the name of your CLI tool
@@ -21,6 +24,8 @@ var rootCmd = &cobra.Command{
 		// multiple returns, _ indicates ignore the error. neato
 		version, _ := cmd.Flags().GetBool("version")
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		scaffold, _ := cmd.Flags().GetBool("scaffold")
+
 
 		if version {
 			versionCmd.Run(cmd, args)
@@ -33,24 +38,45 @@ var rootCmd = &cobra.Command{
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			uuid := fakers.NewUUIDFaker();
-			email := fakers.NewEmailFaker()
+			email := fakers.NewEmailFaker();
+			phone := fakers.NewPhoneFaker();
+
 			uuid.Generate();
 			fmt.Println(uuid.GetType());
 			fmt.Println(uuid.GetFormat());
 
 			email.Generate();
+			phone.Generate();
 			// print(json.ToJSONString(config))
 			// print(json.ToJSONString(config.Entities[0]))
+		}
+
+		if(scaffold && scaffold_name != ""){
+			fmt.Println(scaffold)
+			fmt.Println("generating faker..")
+			fmt.Println("scaffold_name: ", scaffold_name)
+
+			faker_config := FakerConfig{
+				Name: scaffold_name,
+				DataType: scaffold_name,
+				Format: "",
+			}
+			GenerateFaker(faker_config);
 		}
 
 	},
 }
 
 func init() {
-	// Register versionCmd (or any other commands) with rootCmd
-	rootCmd.PersistentFlags().Bool("version", false, "show cli version")
-	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs")
-	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file")
+	//main flags
+	rootCmd.PersistentFlags().Bool("version", false, "show cli version");
+	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs");
+	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file");
+
+	//faker generation
+	rootCmd.PersistentFlags().Bool("scaffold", false, "generate new faker scaffold");
+	rootCmd.PersistentFlags().StringVar(&scaffold_name, "scaffold_name", "", "name of new faker");
+
 }
 
 // Execute runs the root command
