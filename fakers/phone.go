@@ -38,7 +38,7 @@ func NewPhoneFaker() *PhoneFaker {
 }
 
 func init() {
-	RegisterFaker("PhoneFaker", &PhoneFaker{
+	RegisterFaker("phone", &PhoneFaker{
 		datatype: models.Type("Phone"),
 		format:   "",
 	})

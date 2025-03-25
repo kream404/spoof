@@ -34,3 +34,10 @@ func NewUUIDFaker() *UUIDFaker {
 		format: "Format not supported for UUID",
 	}
 }
+
+func init() {
+	RegisterFaker("uuid", &UUIDFaker{
+		datatype: models.Type("UUID"),
+		format:   "",
+	})
+}

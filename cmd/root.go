@@ -37,16 +37,9 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-			uuid := fakers.NewUUIDFaker()
 
 
-			uuid.Generate()
-			fmt.Println(uuid.GetType())
-			fmt.Println(uuid.GetFormat())
-
-			test := [2]string{"PhoneFaker", "EmailFaker"}
-
-
+			test := [3]string{"uuid", "phone", "email"}
 			for i := 0; i < len(test); i++ {
 				//basic factory pattern that will be iterated over for generation
 				// Retrieve the correct faker implementation by name
@@ -54,11 +47,11 @@ var rootCmd = &cobra.Command{
 				if found {
 					switch f := faker.(type) {
 					case *fakers.PhoneFaker:
-						// Call Generate on PhoneFaker
 						f.Generate()
 					case *fakers.EmailFaker:
-						// Call Generate on EmailFaker
 						f.Generate()
+					case *fakers.UUIDFaker:
+							f.Generate()
 					default:
 						fmt.Printf("Unknown faker type for: %s\n", test[i])
 					}
