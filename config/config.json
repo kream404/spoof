@@ -10,21 +10,7 @@
       "fields": [
         { "name": "id", "type": "uuid", "auto_increment": true },
         { "name": "email", "type": "email", "format": "email" },
-        { "name": "phonenumber", "type": "phone", "format": "phone" },
-        { "name": "created_at", "type": "timestamp", "format": "yyMMdd HH:mm:ss" },
-        { "name": "customerstatus", "type": "integer" }
-      ]
-    },
-    {
-      "name": "orders",
-      "fields": [
-        { "name": "id", "type": "uuid" },
-        {
-          "name": "customer_id",
-          "type": "uuid",
-          "foreign_key": "customers.id"
-        },
-        { "name": "amount", "type": "float", "min": 10.0, "max": 1000.0 }
+        { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]
     }
   ]

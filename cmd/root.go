@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kream404/scratch/fakers"
 	"github.com/kream404/scratch/models"
 	"github.com/kream404/scratch/services/json"
+	"github.com/kream404/scratch/services/csv"
+
 
 	"github.com/spf13/cobra"
 )
@@ -38,27 +39,28 @@ var rootCmd = &cobra.Command{
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 
+			csv.GenerateCSV(*config, "./output/output.csv")
 
-			test := [3]string{"uuid", "phone", "email"}
-			for i := 0; i < len(test); i++ {
-				//basic factory pattern that will be iterated over for generation
-				// Retrieve the correct faker implementation by name
-				faker, found := fakers.GetFakerByName(test[i])
-				if found {
-					switch f := faker.(type) {
-					case *fakers.PhoneFaker:
-						f.Generate()
-					case *fakers.EmailFaker:
-						f.Generate()
-					case *fakers.UUIDFaker:
-							f.Generate()
-					default:
-						fmt.Printf("Unknown faker type for: %s\n", test[i])
-					}
-				} else {
-					fmt.Printf("Faker not found: %s\n", test[i])
-				}
-			}
+			// test := [3]string{"uuid", "phone", "email"}
+			// for i := 0; i < len(test); i++ {
+			// 	//basic factory pattern that will be iterated over for generation
+			// 	// Retrieve the correct faker implementation by name
+			// 	faker, found := fakers.GetFakerByName(test[i])
+			// 	if found {
+			// 		switch f := faker.(type) {
+			// 		case *fakers.PhoneFaker:
+			// 			f.Generate()
+			// 		case *fakers.EmailFaker:
+			// 			f.Generate()
+			// 		case *fakers.UUIDFaker:
+			// 				f.Generate()
+			// 		default:
+			// 			fmt.Printf("Unknown faker type for: %s\n", test[i])
+			// 		}
+			// 	} else {
+			// 		fmt.Printf("Faker not found: %s\n", test[i])
+			// 	}
+			// }
 			// email.Generate()
 			// phone.Generate()
 			// // print(json.ToJSONString(config))

@@ -3,7 +3,6 @@ package fakers
 import (
 	"fmt"
 	"github.com/kream404/scratch/models"
-	"net/mail"
 	"math/rand"
 	"time"
 )
@@ -15,7 +14,7 @@ type EmailFaker struct {
 	format string
 }
 
-func (f *EmailFaker) Generate() (mail.Address, error) {
+func (f *EmailFaker) Generate() (string, error) {
 	email, err := NewEmail()
 	if err != nil {
 		return email, fmt.Errorf("failed to generate Email: %w", err)
@@ -33,15 +32,11 @@ func (f *EmailFaker) GetFormat() string {
 }
 
 
-func NewEmail() (mail.Address, error) {
+func NewEmail() (string, error) {
 	rand.Seed(time.Now().UnixNano())
 	name := RandomString(8)
 	domain := domains[rand.Intn(len(domains))]
-	email, err := mail.ParseAddress(fmt.Sprintf("%s@%s", name, domain))
-	if(err != nil){
-		return *email, fmt.Errorf("failed to generate Email: %w", err)
-	}
-	return *email, err
+	return fmt.Sprintf("%s@%s", name, domain), nil
 }
 
 func NewEmailFaker() *EmailFaker {
