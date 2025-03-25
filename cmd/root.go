@@ -37,17 +37,17 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-			uuid := fakers.NewUUIDFaker();
+			uuid := fakers.NewUUIDFaker()
 
 
-			uuid.Generate();
-			fmt.Println(uuid.GetType());
-			fmt.Println(uuid.GetFormat());
+			uuid.Generate()
+			fmt.Println(uuid.GetType())
+			fmt.Println(uuid.GetFormat())
 
 			test := [2]string{"PhoneFaker", "EmailFaker"}
 
 
-			for i := 0; i < len(test); i++ {
+			for i := 0 i < len(test) i++ {
 				//basic factory pattern that will be iterated over for generation
 				// Retrieve the correct faker implementation by name
 				faker, found := fakers.GetFakerByName(test[i])
@@ -66,8 +66,8 @@ var rootCmd = &cobra.Command{
 					fmt.Printf("Faker not found: %s\n", test[i])
 				}
 			}
-			// email.Generate();
-			// phone.Generate();
+			// email.Generate()
+			// phone.Generate()
 			// // print(json.ToJSONString(config))
 			// // print(json.ToJSONString(config.Entities[0]))
 		}
@@ -82,7 +82,7 @@ var rootCmd = &cobra.Command{
 				DataType: scaffold_name,
 				Format: "",
 			}
-			GenerateFaker(faker_config);
+			GenerateFaker(faker_config)
 		}
 
 	},
@@ -90,19 +90,19 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	//main flags
-	rootCmd.PersistentFlags().Bool("version", false, "show cli version");
-	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs");
-	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file");
+	rootCmd.PersistentFlags().Bool("version", false, "show cli version")
+	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs")
+	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file")
 
 	//faker generation
-	rootCmd.PersistentFlags().Bool("scaffold", false, "generate new faker scaffold");
-	rootCmd.PersistentFlags().StringVar(&scaffold_name, "scaffold_name", "", "name of new faker");
+	rootCmd.PersistentFlags().Bool("scaffold", false, "generate new faker scaffold")
+	rootCmd.PersistentFlags().StringVar(&scaffold_name, "scaffold_name", "", "name of new faker")
 
 }
 
 // Execute runs the root command
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute() err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

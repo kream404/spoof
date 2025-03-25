@@ -47,18 +47,32 @@ func New{{.Name}}Faker() *{{.Name}}Faker {
 		format:   "{{.Format}}",
 	}
 }
+
+func init() {
+	RegisterFaker("{{.Name}}Faker", &{{.Name}}Faker{
+		datatype: models.Type("{{.Name}}"),
+		format:   "",
+	})
+}
 `
 
 func GenerateFaker(config FakerConfig) error {
 	fileName := fmt.Sprintf("fakers/%s.go", config.Name)
-	f, err := os.Create(strings.ToLower(fileName))
-	if err != nil {
+	fileName = strings.ToLower(fileName)
+
+	_, err := os.Stat(fileName)
+	if(err == nil){
+		return fmt.Errorf("file %s already exists", fileName)
+	}
+
+	f, err := os.Create(fileName)
+	if(err != nil){
 		return err
 	}
 	defer f.Close()
 
 	tmpl, err := template.New("faker").Parse(fakerTemplate)
-	if err != nil {
+	if(err != nil){
 		return err
 	}
 

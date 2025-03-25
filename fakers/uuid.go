@@ -7,8 +7,8 @@ import (
 )
 
 type UUIDFaker struct {
-	datatype models.Type;
-	format string;
+	datatype models.Type
+	format string
 }
 
 func (f *UUIDFaker) Generate() (uuid.UUID, error) {

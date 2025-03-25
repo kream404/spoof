@@ -11,8 +11,8 @@ import (
 var domains = []string{"gmail.com", "outlook.com", "example.com"}
 
 type EmailFaker struct {
-	datatype models.Type;
-	format string;
+	datatype models.Type
+	format string
 }
 
 func (f *EmailFaker) Generate() (mail.Address, error) {
@@ -41,7 +41,7 @@ func NewEmail() (mail.Address, error) {
 	if(err != nil){
 		return *email, fmt.Errorf("failed to generate Email: %w", err)
 	}
-	return *email, err;
+	return *email, err
 }
 
 func NewEmailFaker() *EmailFaker {
