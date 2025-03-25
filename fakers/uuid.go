@@ -12,7 +12,7 @@ type UUIDFaker struct {
 }
 
 func (f *UUIDFaker) Generate() (uuid.UUID, error) {
-	uuid, err := uuid.NewUUID()
+	uuid, err := uuid.NewV7()
 	if err != nil {
 		return uuid, fmt.Errorf("failed to generate UUID: %w", err)
 	}

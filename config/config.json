@@ -1,7 +1,7 @@
 {
   "config": {
     "delimiter": "|",
-    "rowcount": "500",
+    "rowcount": "50000",
     "include_headers": false
   },
   "entities": [
