@@ -14,7 +14,11 @@ type TimestampFaker struct {
 
 func (f *TimestampFaker) Generate() (string, error) {
 	value := time.Now();
-	fmt.Println("spoofed Timestamp:", value)
+	if f.format != "" {
+		formattedTime := value.Format(f.format);
+		return fmt.Sprint(formattedTime), nil
+	}
+	//fmt.Println("spoofed Timestamp:", value)
 	return fmt.Sprint(value), nil
 }
 

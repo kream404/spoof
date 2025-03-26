@@ -1,7 +1,6 @@
 package fakers
 
 import (
-	"fmt"
 	"github.com/kream404/scratch/models"
 )
 
@@ -18,7 +17,7 @@ type PhoneFaker struct {
 func (f *PhoneFaker) Generate() (string, error) {
 	//TODO: Implement generation logic
 	value := "908230912839083"
-	fmt.Println("spoofed phone:", value)
+	//fmt.Println("spoofed phone:", value)
 	return value, nil
 }
 

@@ -19,7 +19,7 @@ func (f *EmailFaker) Generate() (string, error) {
 	if err != nil {
 		return email, fmt.Errorf("failed to generate Email: %w", err)
 	}
-	fmt.Println("spoofed: ", email)
+	//fmt.Println("spoofed: ", email)
 	return email, nil
 }
 

@@ -1,15 +1,15 @@
 {
   "config": {
     "delimiter": "|",
-    "rowcount": "5",
-    "include_headers": false
+    "rowcount": "100000",
+    "include_headers": true
   },
   "entities": [
     {
       "name": "customer",
       "fields": [
         { "name": "customerid", "type": "uuid", "auto_increment": true },
-        { "name": "updated_at", "type": "timestamp", "format": "format input" },
+        { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
         { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]

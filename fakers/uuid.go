@@ -16,7 +16,7 @@ func (f *UUIDFaker) Generate() (uuid.UUID, error) {
 	if err != nil {
 		return uuid, fmt.Errorf("failed to generate UUID: %w", err)
 	}
-	fmt.Println("spoofed: ", uuid)
+	//fmt.Println("spoofed: ", uuid)
 	return uuid, nil
 }
 
