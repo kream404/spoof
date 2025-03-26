@@ -1,7 +1,4 @@
 package models
-
-import "fmt"
-
 type Type string
 
 // Enum values
@@ -16,6 +13,5 @@ const (
 )
 
 func GetType(t Type) Type {
-	fmt.Println(t)
 	return t
 }

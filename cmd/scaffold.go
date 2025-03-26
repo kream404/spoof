@@ -41,10 +41,10 @@ func (f *{{.Name}}Faker) GetFormat() string {
 	return f.format
 }
 
-func New{{.Name}}Faker() *{{.Name}}Faker {
+func New{{.Name}}Faker(format string) *{{.Name}}Faker {
 	return &{{.Name}}Faker{
 		datatype: models.Type("{{.DataType}}"),
-		format:   "{{.Format}}",
+		format:   "format",
 	}
 }
 

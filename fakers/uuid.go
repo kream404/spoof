@@ -28,7 +28,7 @@ func (f *UUIDFaker) GetFormat() string {
 	return f.format
 }
 
-func NewUUIDFaker() *UUIDFaker {
+func NewUUIDFaker(format string) *UUIDFaker {
 	return &UUIDFaker{
 		datatype: models.Type("uuid.UUID"),
 		format: "Format not supported for UUID",

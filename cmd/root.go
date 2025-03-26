@@ -40,31 +40,6 @@ var rootCmd = &cobra.Command{
 			fmt.Println("=================================")
 
 			csv.GenerateCSV(*config, "./output/output.csv")
-
-			// test := [3]string{"uuid", "phone", "email"}
-			// for i := 0; i < len(test); i++ {
-			// 	//basic factory pattern that will be iterated over for generation
-			// 	// Retrieve the correct faker implementation by name
-			// 	faker, found := fakers.GetFakerByName(test[i])
-			// 	if found {
-			// 		switch f := faker.(type) {
-			// 		case *fakers.PhoneFaker:
-			// 			f.Generate()
-			// 		case *fakers.EmailFaker:
-			// 			f.Generate()
-			// 		case *fakers.UUIDFaker:
-			// 				f.Generate()
-			// 		default:
-			// 			fmt.Printf("Unknown faker type for: %s\n", test[i])
-			// 		}
-			// 	} else {
-			// 		fmt.Printf("Faker not found: %s\n", test[i])
-			// 	}
-			// }
-			// email.Generate()
-			// phone.Generate()
-			// // print(json.ToJSONString(config))
-			// // print(json.ToJSONString(config.Entities[0]))
 		}
 
 		if(scaffold && scaffold_name != ""){

@@ -59,10 +59,16 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 				faker, _ := fakers.GetFakerByName(field.Type)
 				switch f := faker.(type) {
 				case *fakers.UUIDFaker:
+					f = fakers.NewUUIDFaker(field.Format)
 					value, err = f.Generate()
 				case *fakers.EmailFaker:
+					f = fakers.NewEmailFaker(field.Format)
 					value, err = f.Generate()
 				case *fakers.PhoneFaker:
+					f = fakers.NewPhoneFaker(field.Format)
+					value, err = f.Generate()
+				case *fakers.TimestampFaker:
+					f = fakers.NewTimestampFaker(field.Format)
 					value, err = f.Generate()
 				default:
 					return fmt.Errorf("unsupported faker type: %s", field.Type)
@@ -71,7 +77,9 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 					fmt.Printf("Faker error: %v\n", err)
 					return fmt.Errorf("error: %s", err)
 				}
-				// fmt.Printf("value: %s", value)
+				// if field.Format != nill {
+				// 	value = fmt.
+				// }
 				record = append(record, fmt.Sprint(value))
 			}
 

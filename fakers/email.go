@@ -39,10 +39,10 @@ func NewEmail() (string, error) {
 	return fmt.Sprintf("%s@%s", name, domain), nil
 }
 
-func NewEmailFaker() *EmailFaker {
+func NewEmailFaker(format string) *EmailFaker {
 	return &EmailFaker{
 		datatype: models.Type("Email"),
-		format: "test",
+		format: format,
 	}
 }
 

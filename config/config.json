@@ -9,6 +9,7 @@
       "name": "customer",
       "fields": [
         { "name": "customerid", "type": "uuid", "auto_increment": true },
+        { "name": "updated_at", "type": "timestamp", "format": "format input" },
         { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]

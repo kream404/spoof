@@ -30,10 +30,10 @@ func (f *PhoneFaker) GetFormat() string {
 	return f.format
 }
 
-func NewPhoneFaker() *PhoneFaker {
+func NewPhoneFaker(format string) *PhoneFaker {
 	return &PhoneFaker{
 		datatype: models.Type("Phone"),
-		format:   "",
+		format:   format,
 	}
 }
 

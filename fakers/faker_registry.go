@@ -1,8 +1,10 @@
 package fakers
 
 import (
-	"github.com/kream404/scratch/interfaces"
+	"log"
 	"sync"
+
+	"github.com/kream404/scratch/interfaces"
 )
 
 var registry = make(map[string]interface{}) // This will hold interface{} to allow different generics
@@ -18,5 +20,8 @@ func GetFakerByName(name string) (interface{}, bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	faker, found := registry[name]
+	if !found {
+		log.Fatalf("Unsupported faker: %s", name)
+	}
 	return faker, found
 }
