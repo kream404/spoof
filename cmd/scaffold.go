@@ -49,7 +49,7 @@ func New{{.Name}}Faker() *{{.Name}}Faker {
 }
 
 func init() {
-	RegisterFaker("{{.Name}}Faker", &{{.Name}}Faker{
+	RegisterFaker("{{.Name | toLower}}", &{{.Name}}Faker{
 		datatype: models.Type("{{.Name}}"),
 		format:   "",
 	})
@@ -59,6 +59,10 @@ func init() {
 func GenerateFaker(config FakerConfig) error {
 	fileName := fmt.Sprintf("fakers/%s.go", config.Name)
 	fileName = strings.ToLower(fileName)
+
+	funcMap := template.FuncMap{
+			"toLower": strings.ToLower,
+	}
 
 	_, err := os.Stat(fileName)
 	if(err == nil){
@@ -71,7 +75,7 @@ func GenerateFaker(config FakerConfig) error {
 	}
 	defer f.Close()
 
-	tmpl, err := template.New("faker").Parse(fakerTemplate)
+	tmpl, err := template.New("faker").Funcs(funcMap).Parse(fakerTemplate)
 	if(err != nil){
 		return err
 	}

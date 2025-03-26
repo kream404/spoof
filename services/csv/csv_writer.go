@@ -68,14 +68,13 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 					return fmt.Errorf("unsupported faker type: %s", field.Type)
 				}
 				if err != nil {
-					    fmt.Printf("Faker error: %v\n", err)
+					fmt.Printf("Faker error: %v\n", err)
 					return fmt.Errorf("error: %s", err)
 				}
 				// fmt.Printf("value: %s", value)
 				record = append(record, fmt.Sprint(value))
 			}
 
-			fmt.Printf("record: %v\n", record)
 			os.Stdout.Sync()
 			if err := writer.Write(record); err != nil {
     			fmt.Printf("CSV Write Error: %v\n", err)
