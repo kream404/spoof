@@ -1,15 +1,15 @@
 {
   "config": {
     "delimiter": "|",
-    "rowcount": "50000",
+    "rowcount": "5",
     "include_headers": false
   },
   "entities": [
     {
       "name": "customer",
       "fields": [
-        { "name": "id", "type": "uuid", "auto_increment": true },
-        { "name": "email", "type": "email", "format": "email" },
+        { "name": "customerid", "type": "uuid", "auto_increment": true },
+        { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]
     }
