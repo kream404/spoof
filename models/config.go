@@ -12,6 +12,7 @@ type Config struct {
 type Field struct {
 	Name       string   `json:"name"`
 	Type       string   `json:"type"`
+	Input			 string 	`json:"input"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
 	Format     string   `json:"format,omitempty"`

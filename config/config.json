@@ -4,7 +4,7 @@
       "config": {
         "file_name": "testfile.csv",
         "delimiter": "|",
-        "rowcount": "100000",
+        "rowcount": "500",
         "include_headers": true
       },
       "fields": [
@@ -13,5 +13,19 @@
         { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]
-    }]
+    },
+    {
+      "config": {
+        "file_name": "output.csv",
+        "delimiter": ",",
+        "rowcount": "500",
+        "include_headers": false
+      },
+      "fields": [
+        { "name": "orderid", "type": "uuid", "auto_increment": true },
+        { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
+        { "name": "phonenumber", "type": "phone", "format": "phone" }
+      ]
+    }
+  ]
 }

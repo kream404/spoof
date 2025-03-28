@@ -10,22 +10,19 @@ import (
 	"github.com/kream404/scratch/models"
 )
 
-//should probably refactor the file config, config.Config is silly
+// GenerateCSV generates CSV files based on the given configuration
 func GenerateCSV(config models.FileConfig, outputPath string) error {
-	//setup
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
 			return fmt.Errorf("failed to create output file: %w", err)
 		}
-		defer outFile.Close() //defer close until wrtite is complete
 
 		writer := csv.NewWriter(outFile)
 		writer.Comma = rune(file.Config.Delimiter[0])
 
-		//append headers first
+		// Write headers if required
 		if file.Config.IncludeHeaders {
-
 			var headers []string
 			for _, field := range file.Fields {
 				headers = append(headers, field.Name)
@@ -35,51 +32,30 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		var value any
 		for range file.Config.RowCount {
-			var record []string
-
-			for _, field := range file.Fields {
-				faker, _ := fakers.GetFakerByName(field.Type)
-				switch f := faker.(type) {
-				case *fakers.UUIDFaker:
-					f = fakers.NewUUIDFaker(field.Format)
-					value, err = f.Generate()
-				case *fakers.EmailFaker:
-					f = fakers.NewEmailFaker(field.Format)
-					value, err = f.Generate()
-				case *fakers.PhoneFaker:
-					f = fakers.NewPhoneFaker(field.Format)
-					value, err = f.Generate()
-				case *fakers.TimestampFaker:
-					f = fakers.NewTimestampFaker(field.Format)
-					value, err = f.Generate()
-				default:
-					return fmt.Errorf("unsupported faker type: %s", field.Type)
-				}
-				if err != nil {
-					fmt.Printf("Faker error: %v\n", err)
-					return fmt.Errorf("error: %s", err)
-				}
-				record = append(record, fmt.Sprint(value))
+			row, err := GenerateValues(file)
+			if err != nil {
+				fmt.Printf("Row generation error: %v\n", err)
+				continue
 			}
-
-			os.Stdout.Sync()
-			if err := writer.Write(record); err != nil {
-   			fmt.Printf("CSV Write Error: %v\n", err)
+			if err := writer.Write(row); err != nil {
+				fmt.Printf("CSV Write Error: %v\n", err)
 			}
 		}
+
+		writer.Flush()
+		if err := writer.Error(); err != nil {
+			return fmt.Errorf("CSV writer error: %w", err)
+		}
+
+		outFile.Close()
 	}
 	return nil
 }
 
+//returns pointer to output file
 func MakeOutputDir(config models.Config) (*os.File, error) {
-	rootDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	outputDir := filepath.Join(rootDir, "output")
+	outputDir := "output"
 	outputFile := filepath.Join(outputDir, config.FileName)
 
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
@@ -92,4 +68,37 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	}
 
 	return file, nil
+}
+
+//geneerat
+func GenerateValues(file models.Entity) ([]string, error) {
+	var record []string
+	var value any
+	var err error
+	for _, field := range file.Fields {
+		faker, _ := fakers.GetFakerByName(field.Type)
+		switch f := faker.(type) {
+		case *fakers.UUIDFaker:
+			f = fakers.NewUUIDFaker(field.Format)
+			value, err = f.Generate()
+		case *fakers.EmailFaker:
+			f = fakers.NewEmailFaker(field.Format)
+			value, err = f.Generate()
+		case *fakers.PhoneFaker:
+			f = fakers.NewPhoneFaker(field.Format)
+			value, err = f.Generate()
+		case *fakers.TimestampFaker:
+			f = fakers.NewTimestampFaker(field.Format)
+			value, err = f.Generate()
+		default:
+			return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("Faker error: %w", err)
+		}
+
+		record = append(record, fmt.Sprint(value))
+	}
+	return record, nil
 }
