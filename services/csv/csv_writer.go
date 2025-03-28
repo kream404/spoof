@@ -75,6 +75,8 @@ func GenerateValues(file models.Entity) ([]string, error) {
 	var record []string
 	var value any
 	var err error
+
+	//i wish there was a better way to do this...
 	for _, field := range file.Fields {
 		faker, _ := fakers.GetFakerByName(field.Type)
 		switch f := faker.(type) {
