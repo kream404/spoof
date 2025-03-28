@@ -66,7 +66,6 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %w", err)
 	}
-
 	return file, nil
 }
 
@@ -92,6 +91,9 @@ func GenerateValues(file models.Entity) ([]string, error) {
 		case *fakers.TimestampFaker:
 			f = fakers.NewTimestampFaker(field.Format)
 			value, err = f.Generate()
+		case *fakers.RangeFaker:
+				f = fakers.NewRangeFaker(field.Format, field.Values)
+				value, err = f.Generate()
 		default:
 			return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
 		}

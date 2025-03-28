@@ -14,6 +14,7 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 	}
 	defer file.Close()
 
+
 	decoder := json.NewDecoder(file)
 	var config models.FileConfig
 	err = decoder.Decode(&config)

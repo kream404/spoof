@@ -3,7 +3,9 @@
 - range faker (can input in array of values and it will pick one at random)
 - db connector service
 - build script
-- test with multiple files
+- plugins
+  - encryption service
+  - db load
 - performance testing
 - unit testing
 - rename to spoof

@@ -32,8 +32,8 @@ var rootCmd = &cobra.Command{
 			versionCmd.Run(cmd, args)
 			return
 		}
-
 		config, _ := json.LoadConfig(config_path)
+		fmt.Println("here")
 
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
