@@ -10,7 +10,7 @@ import (
 	"github.com/kream404/scratch/models"
 )
 
-// GenerateCSV generates CSV files based on the given configuration
+//helper method to generate file.
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
@@ -70,7 +70,7 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-//geneerat
+//generate row todo: refactor entity to be fileschema or some better name
 func GenerateValues(file models.Entity) ([]string, error) {
 	var record []string
 	var value any
