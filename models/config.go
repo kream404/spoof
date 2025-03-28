@@ -2,6 +2,7 @@ package models
 
 // Config defines global settings
 type Config struct {
+	FileName   string  `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
 	RowCount       int    `json:"rowcount,string"`
 	IncludeHeaders bool   `json:"include_headers"`
@@ -21,12 +22,11 @@ type Field struct {
 
 // Entity represents a database-like table
 type Entity struct {
-	Name   string  `json:"name"`
+	Config   Config   `json:"config"`
 	Fields []Field `json:"fields"`
 }
 
 // Root structure for JSON parsing
 type FileConfig struct {
-	Config   Config   `json:"config"`
-	Entities []Entity `json:"entities"`
+	Files []Entity `json:"files"`
 }

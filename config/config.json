@@ -1,18 +1,17 @@
 {
-  "config": {
-    "delimiter": "|",
-    "rowcount": "100000",
-    "include_headers": true
-  },
-  "entities": [
-    {
-      "name": "customer",
+
+  "files": [{
+      "config": {
+        "file_name": "testfile.csv",
+        "delimiter": "|",
+        "rowcount": "100000",
+        "include_headers": true
+      },
       "fields": [
         { "name": "customerid", "type": "uuid", "auto_increment": true },
         { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
         { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" }
       ]
-    }
-  ]
+    }]
 }
