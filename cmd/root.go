@@ -33,9 +33,9 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		config, _ := json.LoadConfig(config_path)
-		fmt.Println("here")
 
 		if(verbose && config != nil) {
+			fmt.Println("here")
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 

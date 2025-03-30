@@ -1,10 +1,14 @@
 package fakers
 
 import (
-	"fmt"
+	"log"
+	r "math/rand"
+	s "strings"
+
 	"github.com/kream404/scratch/models"
 )
 
+//picks value at random from given input array
 type RangeFaker struct {
 	datatype models.Type
 	format   string
@@ -12,10 +16,12 @@ type RangeFaker struct {
 }
 
 func (f *RangeFaker) Generate() (any, error) {
-	//TODO: Implement generation logic
-	//TODO: Add proper generation logic here
-	fmt.Println("spoofed Range:", "")
-	return "value", nil
+	size := len(f.values)
+	if !(size > 0){
+		log.Fatal("Must provide input to use Range.")
+	}
+
+	return f.values[r.Intn(size)], nil
 }
 
 func (f *RangeFaker) GetType() models.Type {
@@ -26,12 +32,23 @@ func (f *RangeFaker) GetFormat() string {
 	return f.format
 }
 
-func NewRangeFaker(format string, values []any) *RangeFaker {
-	fmt.Println(values)
+//can pass a single value, multiple, string or int to store
+func NewRangeFaker(format string, values string) *RangeFaker {
+	if(len(values) <= 0){
+		log.Fatal("You must provide values attribute in schema when using 'range'.")
+	}
+	var parsedValues []any
+
+	parts := s.Split(values, ",")
+	for _, part := range parts {
+		trimmed := s.TrimSpace(part)
+		parsedValues = append(parsedValues, trimmed)
+	}
+
 	return &RangeFaker{
-		datatype: models.Type("Range"),
-		format:   "format",
-		values: values,
+		datatype: "Range", // Assuming models.Type("Range") is meant to be a string
+		format:   format,
+		values:   parsedValues,
 	}
 }
 

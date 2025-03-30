@@ -1,0 +1,29 @@
+{
+  "files": [{
+      "config": {
+        "file_name": "testfile.csv",
+        "delimiter": "|",
+        "rowcount": "500",
+        "include_headers": true
+      },
+      "cache":{
+        "db_host": "",
+        "db_port": "",
+        "db_username":"",
+        "db_password":"",
+        "statement": "//SELECT cusomterid FROM account.customer as c LEFT OUTER JOIN account.movies as m WHERE m.customerid = c.customerid"
+      },
+      "fields": [
+        { "name": "customerid", "type": "uuid", "seed_type":"db", "schema":"account", "table": "customer" },
+        { "name": "customerstatusid", "type": "range", "values": "1, 2, 3, 4, 5, 6" },
+        { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
+        { "name": "customer_email", "type": "email", "format": "email" },
+        { "name": "phonenumber", "type": "phone", "format": "phone" },
+        { "name": "movieid", "type": "uuid", "seed_type":"db", "schema":"account", "table": "movie" },
+        { "name": "movietitle", "type": "timestamp", "format": "02-01-06 15:04:05" },
+        { "name": "runtime", "type": "email", "format": "email" },
+        { "name": "custmermovielink", "type": "email", "format": "email", "foreignkey": "customerid", "seed_type":"db", "schema":"account", "table": "customer" }
+      ]
+    }
+  ]
+}

@@ -17,13 +17,13 @@ type Field struct {
 	Format     string   `json:"format,omitempty"`
 	Min        float64  `json:"min,omitempty"`
 	Max        float64  `json:"max,omitempty"`
-	Values     []any 		`json:"values"`
+	Values     string 	`json:"values,omitempty"`
 }
 
 // Entity represents a database-like table
 type Entity struct {
 	Config   Config   `json:"config"`
-	Fields []Field `json:"fields"`
+	Fields []Field 		`json:"fields"`
 }
 
 // Root structure for JSON parsing

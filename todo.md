@@ -8,6 +8,7 @@
   - db load
 - performance testing
 - unit testing
+- alias imports where possible
 - rename to spoof
 
 ###support both db connector will be reusable
