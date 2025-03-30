@@ -6,7 +6,7 @@ import (
 
 func main() {
 	//usage: go run main.go --verbose --scaffold --scaffold_name Phone
- 	//usage: go run main.go --config ./config/config.json --verbose
-  	//timestamp: go uses reference, Mon Jan 2 15:04:05 MST 2006
-  	cmd.Execute()
+ 	//usage: go run main.go --config ./demo/schema.json --verbose
+ 	//timestamp: go uses reference, Mon Jan 2 15:04:05 MST 2006
+ 	cmd.Execute()
 }

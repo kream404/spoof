@@ -3,6 +3,7 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -35,8 +36,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file)
 			if err != nil {
-				fmt.Printf("Row generation error: %v\n", err)
-				continue
+				log.Fatal(err)
 			}
 			if err := writer.Write(row); err != nil {
 				fmt.Printf("CSV Write Error: %v\n", err)
@@ -93,6 +93,9 @@ func GenerateValues(file models.Entity) ([]string, error) {
 			value, err = f.Generate()
 		case *fakers.RangeFaker:
 				f = fakers.NewRangeFaker(field.Format, field.Values)
+				value, err = f.Generate()
+		case *fakers.NumberFaker:
+				f = fakers.NewNumberFaker(field.Format, field.Min, field.Max)
 				value, err = f.Generate()
 		default:
 			return nil, fmt.Errorf("unsupported faker type: %s", field.Type)

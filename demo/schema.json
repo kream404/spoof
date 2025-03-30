@@ -3,7 +3,7 @@
       "config": {
         "file_name": "testfile.csv",
         "delimiter": "|",
-        "rowcount": "500",
+        "rowcount": "500000",
         "include_headers": true
       },
       "cache":{
@@ -16,6 +16,7 @@
       "fields": [
         { "name": "customerid", "type": "uuid", "seed_type":"db", "schema":"account", "table": "customer" },
         { "name": "customerstatusid", "type": "range", "values": "1, 2, 3, 4, 5, 6" },
+        { "name": "amount", "type": "number", "min": 0.0, "max": 2000.00 },
         { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
         { "name": "customer_email", "type": "email", "format": "email" },
         { "name": "phonenumber", "type": "phone", "format": "phone" },
