@@ -2,7 +2,7 @@ package fakers
 
 import (
 	"log"
-	r "math/rand"
+	"math/rand"
 	s "strings"
 
 	"github.com/kream404/scratch/models"
@@ -12,7 +12,8 @@ import (
 type RangeFaker struct {
 	datatype models.Type
 	format   string
-	values []any
+	values 	 []any
+	rng    	 *rand.Rand
 }
 
 func (f *RangeFaker) Generate() (any, error) {
@@ -21,7 +22,7 @@ func (f *RangeFaker) Generate() (any, error) {
 		log.Fatal("Must provide input to use Range.")
 	}
 
-	return f.values[r.Intn(size)], nil
+	return f.values[f.rng.Intn(size)], nil
 }
 
 func (f *RangeFaker) GetType() models.Type {
@@ -33,7 +34,7 @@ func (f *RangeFaker) GetFormat() string {
 }
 
 //can pass a single value, multiple, string or int to store
-func NewRangeFaker(format string, values string) *RangeFaker {
+func NewRangeFaker(format string, values string, rng *rand.Rand) *RangeFaker {
 	if(len(values) <= 0){
 		log.Fatal("You must provide values attribute in schema when using 'range'.")
 	}
@@ -49,6 +50,7 @@ func NewRangeFaker(format string, values string) *RangeFaker {
 		datatype: "Range", // Assuming models.Type("Range") is meant to be a string
 		format:   format,
 		values:   parsedValues,
+		rng: rng,
 	}
 }
 

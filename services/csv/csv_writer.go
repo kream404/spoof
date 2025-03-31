@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/kream404/scratch/models"
 )
 
-//helper method to generate file.
+// Helper method to generate file.
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
@@ -33,8 +34,12 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
+		// Create a single seeded rand.Rand instance
+		seed := int64(42) // Change this to any seed value for deterministic results
+		rng := rand.New(rand.NewSource(seed))
+
 		for range file.Config.RowCount {
-			row, err := GenerateValues(file)
+			row, err := GenerateValues(file, rng)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -53,7 +58,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 	return nil
 }
 
-//returns pointer to output file
+// Returns pointer to output file
 func MakeOutputDir(config models.Config) (*os.File, error) {
 	outputDir := "output"
 	outputFile := filepath.Join(outputDir, config.FileName)
@@ -69,34 +74,34 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-//generate row todo: refactor entity to be fileschema or some better name
-func GenerateValues(file models.Entity) ([]string, error) {
+// Generate row with a shared deterministic RNG instance
+func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 	var record []string
 	var value any
 	var err error
 
-	//i wish there was a better way to do this...
 	for _, field := range file.Fields {
 		faker, _ := fakers.GetFakerByName(field.Type)
 		switch f := faker.(type) {
 		case *fakers.UUIDFaker:
-			f = fakers.NewUUIDFaker(field.Format)
+			f = fakers.NewUUIDFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.EmailFaker:
-			f = fakers.NewEmailFaker(field.Format)
+			fmt.Printf("seeded value: %d\n", rng.Int()) // Debugging output
+			f = fakers.NewEmailFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.PhoneFaker:
-			f = fakers.NewPhoneFaker(field.Format)
+			f = fakers.NewPhoneFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.TimestampFaker:
-			f = fakers.NewTimestampFaker(field.Format)
+			f = fakers.NewTimestampFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.RangeFaker:
-				f = fakers.NewRangeFaker(field.Format, field.Values)
-				value, err = f.Generate()
+			f = fakers.NewRangeFaker(field.Format, field.Values, rng)
+			value, err = f.Generate()
 		case *fakers.NumberFaker:
-				f = fakers.NewNumberFaker(field.Format, field.Min, field.Max)
-				value, err = f.Generate()
+			f = fakers.NewNumberFaker(field.Format, field.Min, field.Max, rng)
+			value, err = f.Generate()
 		default:
 			return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
 		}
@@ -107,5 +112,6 @@ func GenerateValues(file models.Entity) ([]string, error) {
 
 		record = append(record, fmt.Sprint(value))
 	}
+
 	return record, nil
 }

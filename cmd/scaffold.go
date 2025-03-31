@@ -18,11 +18,13 @@ const fakerTemplate = `package fakers
 import (
 	"fmt"
 	"github.com/kream404/scratch/models"
+	"math/rand"
 )
 
 type {{.Name}}Faker struct {
 	datatype models.Type
 	format   string
+	rng 		 *rand.Rand
 }
 
 func (f *{{.Name}}Faker) Generate() ({{.DataType}}, error) {
@@ -41,10 +43,11 @@ func (f *{{.Name}}Faker) GetFormat() string {
 	return f.format
 }
 
-func New{{.Name}}Faker(format string) *{{.Name}}Faker {
+func New{{.Name}}Faker(format string, rng *rand.Rand) *{{.Name}}Faker {
 	return &{{.Name}}Faker{
 		datatype: models.Type("{{.DataType}}"),
 		format:   "format",
+		rng: rng,
 	}
 }
 

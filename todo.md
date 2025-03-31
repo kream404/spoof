@@ -1,6 +1,5 @@
 ##todo
 --------------------------
-- range faker (can input in array of values and it will pick one at random)
 - db connector service
 - build script
 - plugins
@@ -10,6 +9,9 @@
 - unit testing
 - alias imports where possible
 - rename to spoof
+- fix phone spoofer
+
+- seed it for deterministic output ?????
 
 ###support both db connector will be reusable
 - ```

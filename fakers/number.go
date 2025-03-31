@@ -13,10 +13,11 @@ type NumberFaker struct {
 	format   string
 	min 		 float64
 	max 		 float64
+	rng 		 *rand.Rand
 }
 
 func (f *NumberFaker) Generate() (float64, error) {
-	rawValue := f.min + rand.Float64()*(f.max-f.min)
+	rawValue := f.min + f.rng.Float64()*(f.max-f.min)
 	decimals, err := strconv.Atoi(f.format);
 
 	if err != nil{
@@ -39,12 +40,13 @@ func (f *NumberFaker) GetFormat() string {
 	return f.format
 }
 
-func NewNumberFaker(format string, min float64, max float64) *NumberFaker {
+func NewNumberFaker(format string, min float64, max float64, rng *rand.Rand) *NumberFaker {
 	return &NumberFaker{
 		datatype: models.Type("Number"),
 		format:   "format",
 		min: min,
 		max: max,
+		rng: rng,
 	}
 }
 

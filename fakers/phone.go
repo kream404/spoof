@@ -1,12 +1,15 @@
 package fakers
 
 import (
+	"math/rand"
+
 	"github.com/kream404/scratch/models"
 )
 
 type PhoneFaker struct {
 	datatype models.Type
 	format   string
+	rng 		 *rand.Rand
 }
 
 //TODO: Add proper generation logic here. You may need to set-up a type
@@ -29,10 +32,11 @@ func (f *PhoneFaker) GetFormat() string {
 	return f.format
 }
 
-func NewPhoneFaker(format string) *PhoneFaker {
+func NewPhoneFaker(format string, rng *rand.Rand) *PhoneFaker {
 	return &PhoneFaker{
 		datatype: models.Type("Phone"),
 		format:   format,
+		rng: rng,
 	}
 }
 

@@ -2,6 +2,7 @@ package fakers
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/kream404/scratch/models"
@@ -10,6 +11,7 @@ import (
 type TimestampFaker struct {
 	datatype models.Type
 	format   string
+	rng 		 *rand.Rand
 }
 
 func (f *TimestampFaker) Generate() (string, error) {
@@ -30,10 +32,11 @@ func (f *TimestampFaker) GetFormat() string {
 	return f.format
 }
 
-func NewTimestampFaker(format string) *TimestampFaker {
+func NewTimestampFaker(format string, rng *rand.Rand) *TimestampFaker {
 	return &TimestampFaker{
 		datatype: models.Type("Timestamp"),
 		format:   format,
+		rng: rng,
 	}
 }
 
