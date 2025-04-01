@@ -12,7 +12,6 @@ import (
 	"github.com/kream404/scratch/models"
 )
 
-// Helper method to generate file.
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
@@ -23,7 +22,6 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		writer := csv.NewWriter(outFile)
 		writer.Comma = rune(file.Config.Delimiter[0])
 
-		// Write headers if required
 		if file.Config.IncludeHeaders {
 			var headers []string
 			for _, field := range file.Fields {
@@ -34,7 +32,6 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		// Create a single seeded rand.Rand instance
 		seed := int64(42) // Change this to any seed value for deterministic results
 		rng := rand.New(rand.NewSource(seed))
 
@@ -58,7 +55,6 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 	return nil
 }
 
-// Returns pointer to output file
 func MakeOutputDir(config models.Config) (*os.File, error) {
 	outputDir := "output"
 	outputFile := filepath.Join(outputDir, config.FileName)
@@ -74,12 +70,12 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-// Generate row with a shared deterministic RNG instance
 func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 	var record []string
 	var value any
 	var err error
 
+	//conditionally pull from db here ?
 	for _, field := range file.Fields {
 		faker, _ := fakers.GetFakerByName(field.Type)
 		switch f := faker.(type) {
@@ -87,7 +83,7 @@ func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 			f = fakers.NewUUIDFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.EmailFaker:
-			fmt.Printf("seeded value: %d\n", rng.Int()) // Debugging output
+			fmt.Printf("seeded value: %d\n", rng.Int())
 			f = fakers.NewEmailFaker(field.Format, rng)
 			value, err = f.Generate()
 		case *fakers.PhoneFaker:

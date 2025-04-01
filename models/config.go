@@ -1,6 +1,5 @@
 package models
 
-// Config defines global settings
 type Config struct {
 	FileName   string  `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
@@ -8,7 +7,6 @@ type Config struct {
 	IncludeHeaders bool   `json:"include_headers"`
 }
 
-// Field defines the structure of a field
 type Field struct {
 	Name       string   `json:"name"`
 	Type       string   `json:"type"`
@@ -20,13 +18,11 @@ type Field struct {
 	Values     string 	`json:"values,omitempty"`
 }
 
-// Entity represents a database-like table
 type Entity struct {
 	Config   Config   `json:"config"`
 	Fields []Field 		`json:"fields"`
 }
 
-// Root structure for JSON parsing
 type FileConfig struct {
 	Files []Entity `json:"files"`
 }

@@ -3,7 +3,7 @@
       "config": {
         "file_name": "testfile.csv",
         "delimiter": "|",
-        "rowcount": "5",
+        "rowcount": "50000",
         "include_headers": true
       },
       "cache":{

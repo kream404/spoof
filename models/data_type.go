@@ -1,7 +1,6 @@
 package models
 type Type string
 
-// Enum values
 const (
 	String    Type = "String"
 	Timestamp Type = "Timestamp"

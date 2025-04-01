@@ -26,7 +26,6 @@ func (f *NumberFaker) Generate() (float64, error) {
 	return roundToDecimal(rawValue, decimals), nil
 }
 
-// roundToDecimal rounds a float to a specified number of decimal places
 func roundToDecimal(value float64, places int) float64 {
 	factor := math.Pow(10, float64(places))
 	return math.Round(value*factor) / factor

@@ -7,7 +7,7 @@ import (
 	"github.com/kream404/scratch/interfaces"
 )
 
-var registry = make(map[string]interface{}) // This will hold interface{} to allow different generics
+var registry = make(map[string]interface{})
 var mu sync.Mutex
 
 func RegisterFaker[T any](name string, faker interfaces.Faker[T]) {

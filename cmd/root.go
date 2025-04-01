@@ -18,7 +18,7 @@ var scaffold string
 var scaffold_name string
 
 var rootCmd = &cobra.Command{
-	Use:   "scratch", // This is the name of your CLI tool
+	Use:   "scratch",
 	Short: "A brief description of your CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 

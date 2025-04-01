@@ -47,7 +47,7 @@ func NewRangeFaker(format string, values string, rng *rand.Rand) *RangeFaker {
 	}
 
 	return &RangeFaker{
-		datatype: "Range", // Assuming models.Type("Range") is meant to be a string
+		datatype: "Range",
 		format:   format,
 		values:   parsedValues,
 		rng: rng,
