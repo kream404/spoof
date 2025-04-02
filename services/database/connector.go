@@ -10,15 +10,13 @@ import (
 const (
   host     = "localhost"
   port     = 5432
-  user     = "postgres"
-  password = "your-password"
-  dbname   = "demo_tb"
+  user     = "user"
+  password = "password"
+  dbname   = "database"
 )
 
-func openConnection(){
- psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-    "password=%s dbname=%s sslmode=disable",
-    host, port, user, password, dbname)
+func OpenConnection(){
+ psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+ "password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
   db, err := sql.Open("postgres", psqlInfo)
   if err != nil {
     panic(err)
@@ -30,5 +28,5 @@ func openConnection(){
     panic(err)
   }
 
-  fmt.Println("Successfully connected!")
+  fmt.Println("Successfully connected to db...")
 }

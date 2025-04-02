@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/kream404/scratch/models"
-	"github.com/kream404/scratch/services/json"
 	"github.com/kream404/scratch/services/csv"
-
+	"github.com/kream404/scratch/services/database"
+	"github.com/kream404/scratch/services/json"
 
 	"github.com/spf13/cobra"
 )
@@ -35,9 +35,10 @@ var rootCmd = &cobra.Command{
 		config, _ := json.LoadConfig(config_path)
 
 		if(verbose && config != nil) {
-			fmt.Println("here")
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
+
+			database.OpenConnection();
 
 			csv.GenerateCSV(*config, "./output/output.csv")
 		}

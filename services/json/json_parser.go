@@ -2,7 +2,6 @@ package json
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/kream404/scratch/models"
@@ -23,7 +22,6 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 		return nil, err
 	}
 
-	fmt.Print("here")
 	return &config, nil
 }
 
