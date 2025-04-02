@@ -11,7 +11,7 @@
         "db_port": "",
         "db_username":"",
         "db_password":"",
-        "statement": "//SELECT cusomterid FROM account.customer as c LEFT OUTER JOIN account.movies as m WHERE m.customerid = c.customerid"
+        "statement": "SELECT cusomterid FROM account.customer as c LEFT OUTER JOIN account.movies as m WHERE m.customerid = c.customerid"
       },
       "fields": [
         { "name": "customerid", "type": "uuid", "seed_type":"db", "schema":"account", "table": "customer" },

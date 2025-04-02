@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/kream404/scratch/models"
-	"github.com/kream404/scratch/services/csv"
+	// "github.com/kream404/scratch/services/csv"
 	"github.com/kream404/scratch/services/database"
 	"github.com/kream404/scratch/services/json"
 
@@ -38,9 +38,13 @@ var rootCmd = &cobra.Command{
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 
-			database.OpenConnection();
-
-			csv.GenerateCSV(*config, "./output/output.csv")
+			database, err := database.NewDBConnector().OpenConnection();
+			if err != nil{
+				println("failed to connect db...", err)
+			}
+			database.FetchRows("SELECT * FROM account.customer;")
+			database.CloseConnection();
+			// csv.GenerateCSV(*config, "./output/output.csv")
 		}
 
 		if(scaffold && scaffold_name != ""){

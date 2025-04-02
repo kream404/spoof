@@ -32,3 +32,11 @@ func ToJSONString(data interface{}) (string, error) {
 	}
 	return string(jsonBytes), nil
 }
+
+func MapToJSON(data []map[string]interface{}) (string, error) {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
+}
