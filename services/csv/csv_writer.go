@@ -10,6 +10,7 @@ import (
 
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
+	"github.com/kream404/spoof/services/database"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -74,6 +75,13 @@ func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 	var record []string
 	var value any
 	var err error
+
+	database, err := database.NewDBConnector().OpenConnection(file.CacheConfig);
+	if err != nil{
+		println("failed to connect db...", err)
+	}
+	database.FetchRows("SELECT * FROM account.customer;")
+	database.CloseConnection();
 
 	//conditionally pull from db here ?
 	for _, field := range file.Fields {

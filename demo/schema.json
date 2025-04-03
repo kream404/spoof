@@ -7,10 +7,11 @@
         "include_headers": true
       },
       "cache":{
-        "db_host": "",
-        "db_port": "",
-        "db_username":"",
-        "db_password":"",
+        "db_hostname": "localhost",
+        "db_port": "5432",
+        "db_username":"user",
+        "db_password":"password",
+        "db_name":"database",
         "statement": "SELECT cusomterid FROM account.customer as c LEFT OUTER JOIN account.movies as m WHERE m.customerid = c.customerid"
       },
       "fields": [

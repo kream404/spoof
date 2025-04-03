@@ -1,10 +1,19 @@
 package models
 
 type Config struct {
-	FileName   string  `json:"file_name"`
+	FileName   		 string  `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
 	RowCount       int    `json:"rowcount,string"`
 	IncludeHeaders bool   `json:"include_headers"`
+}
+
+type CacheConfig struct {
+	Hostname    string  `json:"db_hostname"`
+	Port   		 		 string  `json:"db_port"`
+	Username   		 string  `json:"db_username"`
+	Password   string  `json:"db_password"`
+	Name			 string  `json:"db_name"`
+	Statement  string	 `json:"statement"`
 }
 
 type Field struct {
@@ -20,6 +29,7 @@ type Field struct {
 
 type Entity struct {
 	Config   Config   `json:"config"`
+	CacheConfig			 CacheConfig 	`json:"cache"`
 	Fields []Field 		`json:"fields"`
 }
 

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	// "github.com/kream404/spoof/services/json"
+	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/json"
 	_ "github.com/lib/pq"
 )
@@ -24,8 +26,8 @@ func NewDBConnector() *DBConnector {
 	return &DBConnector{}
 }
 
-func (d *DBConnector) OpenConnection() (*DBConnector, error){
- 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+ "password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, error){
+ 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+ "password=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Password, config.Name)
   database, err := sql.Open("postgres", psqlInfo)
   if err != nil {
     panic(err)
