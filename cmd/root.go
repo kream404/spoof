@@ -38,8 +38,6 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
-
-
 			csv.GenerateCSV(*config, "./output/output.csv")
 		}
 

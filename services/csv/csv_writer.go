@@ -33,7 +33,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		seed := int64(42) // Change this to any seed value for deterministic results
+		seed := int64(42) // TODO: could make deterministic results??
 		rng := rand.New(rand.NewSource(seed))
 
 		for range file.Config.RowCount {
