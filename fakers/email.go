@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 var domains = []string{"gmail.com", "outlook.com", "example.com"}

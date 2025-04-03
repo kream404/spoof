@@ -17,7 +17,7 @@ const fakerTemplate = `package fakers
 
 import (
 	"fmt"
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 	"math/rand"
 )
 

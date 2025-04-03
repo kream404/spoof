@@ -1,7 +1,7 @@
 package interfaces
 
 import(
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 var format string
 var datatype models.Type

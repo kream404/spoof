@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 func LoadConfig(filepath string) (*models.FileConfig, error) {

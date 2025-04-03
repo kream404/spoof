@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kream404/scratch/models"
-	// "github.com/kream404/scratch/services/csv"
-	"github.com/kream404/scratch/services/database"
-	"github.com/kream404/scratch/services/json"
+	"github.com/kream404/spoof/models"
+	// "github.com/kream404/spoof/services/csv"
+	"github.com/kream404/spoof/services/database"
+	"github.com/kream404/spoof/services/json"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +18,7 @@ var scaffold string
 var scaffold_name string
 
 var rootCmd = &cobra.Command{
-	Use:   "scratch",
+	Use:   "spoof",
 	Short: "A brief description of your CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 

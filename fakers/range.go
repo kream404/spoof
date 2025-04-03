@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	s "strings"
 
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 //picks value at random from given input array

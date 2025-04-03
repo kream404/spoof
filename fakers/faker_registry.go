@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/kream404/scratch/interfaces"
+	"github.com/kream404/spoof/interfaces"
 )
 
 var registry = make(map[string]interface{})

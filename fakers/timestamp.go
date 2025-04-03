@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 type TimestampFaker struct {

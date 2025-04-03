@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/google/uuid"
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 type UUIDFaker struct {

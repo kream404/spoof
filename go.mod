@@ -1,4 +1,4 @@
-module github.com/kream404/scratch
+module github.com/kream404/spoof
 
 go 1.24.0
 

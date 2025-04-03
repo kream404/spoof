@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kream404/scratch/fakers"
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/fakers"
+	"github.com/kream404/spoof/models"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {

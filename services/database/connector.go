@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/kream404/scratch/services/json"
+	"github.com/kream404/spoof/services/json"
 	_ "github.com/lib/pq"
 )
 

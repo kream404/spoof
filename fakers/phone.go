@@ -3,7 +3,7 @@ package fakers
 import (
 	"math/rand"
 
-	"github.com/kream404/scratch/models"
+	"github.com/kream404/spoof/models"
 )
 
 type PhoneFaker struct {
