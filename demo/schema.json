@@ -12,7 +12,7 @@
         "db_username":"user",
         "db_password":"password",
         "db_name":"database",
-        "statement": "SELECT cusomterid FROM account.customer as c LEFT OUTER JOIN account.movies as m WHERE m.customerid = c.customerid"
+        "statement": "SELECT customerid, amount, email FROM account.customer;"
       },
       "fields": [
         { "name": "customerid", "type": "uuid", "seed_type":"db", "schema":"account", "table": "customer" },

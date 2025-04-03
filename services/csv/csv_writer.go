@@ -11,6 +11,7 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
+	"github.com/kream404/spoof/services/json"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -80,7 +81,11 @@ func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 	if err != nil{
 		println("failed to connect db...", err)
 	}
-	database.FetchRows("SELECT * FROM account.customer;")
+	result, err := database.FetchRows(file.CacheConfig.Statement)
+	if err != nil {
+		return nil, err
+	}
+	json.ToJSONString(result);
 	database.CloseConnection();
 
 	//conditionally pull from db here ?

@@ -6,7 +6,6 @@ import (
 
 	// "github.com/kream404/spoof/services/json"
 	"github.com/kream404/spoof/models"
-	"github.com/kream404/spoof/services/json"
 	_ "github.com/lib/pq"
 )
 
@@ -82,6 +81,6 @@ func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
 		results = append(results, rowMap)
 	}
 
-	fmt.Println(json.MapToJSON(results))
+	// fmt.Println(json.MapToJSON(results))
 	return results, nil
 }
