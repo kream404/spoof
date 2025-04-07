@@ -22,7 +22,7 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 		return nil, err
 	}
 
-	println(ToJSONString(config.Files[0].CacheConfig));
+	// println(ToJSONString(config.Files[0].CacheConfig));
 	return &config, nil
 }
 

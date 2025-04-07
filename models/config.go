@@ -25,6 +25,7 @@ type Field struct {
 	Min        float64    `json:"min,omitempty"`
 	Max        float64    `json:"max,omitempty"`
 	Values     string 	`json:"values,omitempty"`
+	SeedType   string   `json:"seed_type,omitempty"`
 }
 
 type Entity struct {
@@ -35,4 +36,8 @@ type Entity struct {
 
 type FileConfig struct {
 	Files []Entity `json:"files"`
+}
+
+func (c CacheConfig) HasCache() bool {
+	return c != CacheConfig{}
 }

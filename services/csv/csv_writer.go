@@ -15,6 +15,8 @@ import (
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
+	var seed []map[string]any
+	var seedIndex = 0
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
@@ -34,16 +36,28 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		seed := int64(42) // TODO: could make deterministic results??
-		rng := rand.New(rand.NewSource(seed))
+		if file.CacheConfig.HasCache(){
+			println("has cache")
+			seed, err = LoadCache(file.CacheConfig)
+			if err != nil {
+				println("could not seed from db: ", err)
+			}
+			print(json.ToJSONString(seed))
+		}
+
+		rng := rand.New(rand.NewSource(42))
 
 		for range file.Config.RowCount {
-			row, err := GenerateValues(file, rng)
+			row, err := GenerateValues(file, seed, seedIndex, rng)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if err := writer.Write(row); err != nil {
 				fmt.Printf("CSV Write Error: %v\n", err)
+			}
+			seedIndex++
+			if len(seed) > 0 && seedIndex >= len(seed) {
+				seedIndex = 0
 			}
 		}
 
@@ -72,47 +86,40 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
+func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
 	var value any
 	var err error
 
-	database, err := database.NewDBConnector().OpenConnection(file.CacheConfig);
-	if err != nil{
-		println("failed to connect db...", err)
-	}
-	result, err := database.FetchRows(file.CacheConfig.Statement)
-	if err != nil {
-		return nil, err
-	}
-	json.ToJSONString(result);
-	database.CloseConnection();
-
-	//conditionally pull from db here ?
 	for _, field := range file.Fields {
-		faker, _ := fakers.GetFakerByName(field.Type)
-		switch f := faker.(type) {
-		case *fakers.UUIDFaker:
-			f = fakers.NewUUIDFaker(field.Format, rng)
-			value, err = f.Generate()
-		case *fakers.EmailFaker:
-			fmt.Printf("seeded value: %d\n", rng.Int())
-			f = fakers.NewEmailFaker(field.Format, rng)
-			value, err = f.Generate()
-		case *fakers.PhoneFaker:
-			f = fakers.NewPhoneFaker(field.Format, rng)
-			value, err = f.Generate()
-		case *fakers.TimestampFaker:
-			f = fakers.NewTimestampFaker(field.Format, rng)
-			value, err = f.Generate()
-		case *fakers.RangeFaker:
-			f = fakers.NewRangeFaker(field.Format, field.Values, rng)
-			value, err = f.Generate()
-		case *fakers.NumberFaker:
-			f = fakers.NewNumberFaker(field.Format, field.Min, field.Max, rng)
-			value, err = f.Generate()
-		default:
-			return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
+		if(field.SeedType != "" && field.SeedType == "db"){
+			println("seedtype provided")
+			value = seed[seedIndex][field.Name]
+			println("seeded value: ", fmt.Sprint(value))
+		}else{
+			faker, _ := fakers.GetFakerByName(field.Type)
+			switch f := faker.(type) {
+			case *fakers.UUIDFaker:
+				f = fakers.NewUUIDFaker(field.Format, rng)
+				value, err = f.Generate()
+			case *fakers.EmailFaker:
+				f = fakers.NewEmailFaker(field.Format, rng)
+				value, err = f.Generate()
+			case *fakers.PhoneFaker:
+				f = fakers.NewPhoneFaker(field.Format, rng)
+				value, err = f.Generate()
+			case *fakers.TimestampFaker:
+				f = fakers.NewTimestampFaker(field.Format, rng)
+				value, err = f.Generate()
+			case *fakers.RangeFaker:
+				f = fakers.NewRangeFaker(field.Format, field.Values, rng)
+				value, err = f.Generate()
+			case *fakers.NumberFaker:
+				f = fakers.NewNumberFaker(field.Format, field.Min, field.Max, rng)
+				value, err = f.Generate()
+			default:
+				return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
+			}
 		}
 
 		if err != nil {
@@ -123,4 +130,19 @@ func GenerateValues(file models.Entity, rng *rand.Rand) ([]string, error) {
 	}
 
 	return record, nil
+}
+
+func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
+
+	database, err := database.NewDBConnector().OpenConnection(config);
+	if err != nil{
+		println("failed to connect db...", err)
+	}
+	result, err := database.FetchRows(config.Statement)
+	if err != nil {
+		return nil, err
+	}
+	json.ToJSONString(result);
+	database.CloseConnection();
+	return result, nil
 }
