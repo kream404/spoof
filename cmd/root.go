@@ -3,11 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/kream404/spoof/models"
-	// "github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/csv"
-	// "github.com/kream404/spoof/services/database"
 	"github.com/kream404/spoof/services/json"
 
 	"github.com/spf13/cobra"
@@ -71,8 +70,11 @@ func init() {
 
 // Execute runs the root command
 func Execute() {
+	start := time.Now() // Start timer
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	elapsed := time.Since(start)
+	fmt.Printf("\n⏱️  Done in %s\n", elapsed)
 }

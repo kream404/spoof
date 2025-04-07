@@ -93,7 +93,6 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 
 	for _, field := range file.Fields {
 		if(field.SeedType != "" && field.SeedType == "db"){
-			println("seedtype provided")
 			value = seed[seedIndex][field.Name]
 			println("seeded value: ", fmt.Sprint(value))
 		}else{
