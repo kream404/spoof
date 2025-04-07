@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -16,7 +17,7 @@ type NumberFaker struct {
 	rng 		 *rand.Rand
 }
 
-func (f *NumberFaker) Generate() (float64, error) {
+func (f *NumberFaker) Generate() (any, error) {
 	rawValue := f.min + f.rng.Float64()*(f.max-f.min)
 	decimals, err := strconv.Atoi(f.format);
 
@@ -50,8 +51,7 @@ func NewNumberFaker(format string, min float64, max float64, rng *rand.Rand) *Nu
 }
 
 func init() {
-	RegisterFaker("number", &NumberFaker{
-		datatype: models.Type("Number"),
-		format:   "",
+	RegisterFaker("number", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewNumberFaker(field.Format, field.Min, field.Max, rng), nil
 	})
 }

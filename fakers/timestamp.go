@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -14,7 +15,7 @@ type TimestampFaker struct {
 	rng 		 *rand.Rand
 }
 
-func (f *TimestampFaker) Generate() (string, error) {
+func (f *TimestampFaker) Generate() (any, error) {
 	value := time.Now();
 	if f.format != "" {
 		formattedTime := value.Format(f.format);
@@ -41,5 +42,7 @@ func NewTimestampFaker(format string, rng *rand.Rand) *TimestampFaker {
 }
 
 func init() {
-	RegisterFaker("timestamp", &TimestampFaker{})
+	RegisterFaker("timestamp", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewTimestampFaker(field.Format, rng), nil
+	})
 }

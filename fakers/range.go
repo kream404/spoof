@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	s "strings"
 
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -55,8 +56,7 @@ func NewRangeFaker(format string, values string, rng *rand.Rand) *RangeFaker {
 }
 
 func init() {
-	RegisterFaker("range", &RangeFaker{
-		datatype: models.Type("Range"),
-		format:   "",
+	RegisterFaker("range", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewRangeFaker(field.Format, field.Values, rng), nil
 	})
 }

@@ -2,26 +2,30 @@ package fakers
 
 import (
 	"log"
+	"math/rand"
 	"sync"
 
 	"github.com/kream404/spoof/interfaces"
+	"github.com/kream404/spoof/models"
 )
 
-var registry = make(map[string]interface{})
+type FakerFactory func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error)
+
+var registry = make(map[string]FakerFactory)
 var mu sync.Mutex
 
-func RegisterFaker[T any](name string, faker interfaces.Faker[T]) {
+func RegisterFaker(name string, factory FakerFactory) {
 	mu.Lock()
 	defer mu.Unlock()
-	registry[name] = faker
+	registry[name] = factory
 }
 
-func GetFakerByName(name string) (interface{}, bool) {
+func GetFakerByName(name string) (FakerFactory, bool) {
 	mu.Lock()
 	defer mu.Unlock()
-	faker, found := registry[name]
+	factory, found := registry[name]
 	if !found {
 		log.Fatalf("Unsupported faker: %s", name)
 	}
-	return faker, found
+	return factory, found
 }

@@ -3,6 +3,7 @@ package fakers
 import (
 	"math/rand"
 
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -17,7 +18,7 @@ type PhoneFaker struct {
 //TODO: should I make a basic random string generator that uses regex?? might be useful for other fakers
 //it would be a good excue to get the barebones of reading in a formatter working, would be lift and shift for
 //the config version
-func (f *PhoneFaker) Generate() (string, error) {
+func (f *PhoneFaker) Generate() (any, error) {
 	//TODO: Implement generation logic
 	value := "908230912839083"
 	//fmt.Println("spoofed phone:", value)
@@ -41,8 +42,7 @@ func NewPhoneFaker(format string, rng *rand.Rand) *PhoneFaker {
 }
 
 func init() {
-	RegisterFaker("phone", &PhoneFaker{
-		datatype: models.Type("Phone"),
-		format:   "",
+	RegisterFaker("phone", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewPhoneFaker(field.Format, rng), nil
 	})
 }

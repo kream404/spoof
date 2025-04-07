@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -57,5 +58,7 @@ func (f *EmailFaker) RandomString(length int) string {
 }
 
 func init() {
-	RegisterFaker("email", NewEmailFaker("", nil))
+	RegisterFaker("email", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewRangeFaker(field.Format, field.Values, rng), nil
+	})
 }

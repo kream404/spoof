@@ -11,7 +11,6 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
-	"github.com/kream404/spoof/services/json"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -42,11 +41,10 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			if err != nil {
 				println("could not seed from db: ", err)
 			}
-			print(json.ToJSONString(seed))
 		}
 
 		rng := rand.New(rand.NewSource(42))
-
+		println("spoofing...")
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, seed, seedIndex, rng)
 			if err != nil {
@@ -88,41 +86,26 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 
 func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
-	var value any
-	var err error
-
 	for _, field := range file.Fields {
-		if(field.SeedType != "" && field.SeedType == "db"){
-			value = seed[seedIndex][field.Name]
-			println("seeded value: ", fmt.Sprint(value))
-		}else{
-			faker, _ := fakers.GetFakerByName(field.Type)
-			switch f := faker.(type) {
-			case *fakers.UUIDFaker:
-				f = fakers.NewUUIDFaker(field.Format, rng)
-				value, err = f.Generate()
-			case *fakers.EmailFaker:
-				f = fakers.NewEmailFaker(field.Format, rng)
-				value, err = f.Generate()
-			case *fakers.PhoneFaker:
-				f = fakers.NewPhoneFaker(field.Format, rng)
-				value, err = f.Generate()
-			case *fakers.TimestampFaker:
-				f = fakers.NewTimestampFaker(field.Format, rng)
-				value, err = f.Generate()
-			case *fakers.RangeFaker:
-				f = fakers.NewRangeFaker(field.Format, field.Values, rng)
-				value, err = f.Generate()
-			case *fakers.NumberFaker:
-				f = fakers.NewNumberFaker(field.Format, field.Min, field.Max, rng)
-				value, err = f.Generate()
-			default:
-				return nil, fmt.Errorf("unsupported faker type: %s", field.Type)
-			}
-		}
+		var value any
+		// var err error
 
-		if err != nil {
-			return nil, fmt.Errorf("Faker error: %w", err)
+		if field.SeedType == "db" {
+			value = seed[seedIndex][field.Name]
+			// println("seeded value: ", fmt.Sprint(value))
+		} else {
+			factory, found := fakers.GetFakerByName(field.Type)
+			if !found {
+				return nil, fmt.Errorf("faker not found for type: %s", field.Type)
+			}
+			faker, err := factory(field, rng)
+			if err != nil {
+				return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
+			}
+			value, err = faker.Generate()
+			if err != nil {
+				return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+			}
 		}
 
 		record = append(record, fmt.Sprint(value))
@@ -130,6 +113,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 
 	return record, nil
 }
+
 
 func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
 
@@ -141,7 +125,6 @@ func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	json.ToJSONString(result);
 	database.CloseConnection();
 	return result, nil
 }

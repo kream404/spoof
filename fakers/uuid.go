@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/google/uuid"
+	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
 )
 
@@ -14,7 +15,7 @@ type UUIDFaker struct {
 	rng *rand.Rand
 }
 
-func (f *UUIDFaker) Generate() (uuid.UUID, error) {
+func (f *UUIDFaker) Generate() (any, error) {
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		return uuid, fmt.Errorf("failed to generate UUID: %w", err)
@@ -40,8 +41,7 @@ func NewUUIDFaker(format string, rng *rand.Rand) *UUIDFaker {
 }
 
 func init() {
-	RegisterFaker("uuid", &UUIDFaker{
-		datatype: models.Type("UUID"),
-		format:   "",
+	RegisterFaker("uuid", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
+		return NewUUIDFaker(field.Format, rng), nil
 	})
 }
