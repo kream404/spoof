@@ -18,7 +18,7 @@ const (
 )
 
 type DBConnector struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 func NewDBConnector() *DBConnector {
@@ -32,24 +32,25 @@ func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, e
     panic(err)
   }
   println("connected to db...")
-  return &DBConnector{db: database}, nil
+  return &DBConnector{DB: database}, nil
 }
 
 func (d *DBConnector) CloseConnection(){
-  err := d.db.Close()
+  err := d.DB.Close()
   if err != nil {
     panic(err)
   }
   println("closed connection.")
 }
 
-func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
+func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, error) {
 	db, err := NewDBConnector().OpenConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.CloseConnection()
 
+	println("statement: ", config.Statement)
 	result, err := db.FetchRows(config.Statement)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rows: %w", err)
@@ -59,7 +60,7 @@ func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
 }
 
 func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
-	rows, err := d.db.Query(query)
+	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}

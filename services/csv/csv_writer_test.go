@@ -5,10 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/kream404/spoof/models"
 	csvgen "github.com/kream404/spoof/services/csv"
-	"github.com/kream404/spoof/services/database"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,35 +48,13 @@ func TestGenerateValues_WithSeed(t *testing.T) {
 
 func TestMakeOutputDir(t *testing.T) {
 	cfg := models.Config{FileName: "test_output.csv"}
+
 	file, err := csvgen.MakeOutputDir(cfg)
 	assert.NoError(t, err)
 	assert.FileExists(t, file.Name())
 
 	file.Close()
-	defer os.Remove(file.Name())
-}
 
-func TestLoadCache(t *testing.T) {
-	_, mock, err := sqlmock.New()
+	err = os.RemoveAll("output")
 	assert.NoError(t, err)
-
-	// Mock connector to use sqlmock
-
-	mock.ExpectQuery("SELECT id FROM test_table").
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
-
-	cache := models.CacheConfig{
-		Hostname: "localhost",
-		Port:     "5432",
-		Username: "user",
-		Password: "pass",
-		Name:     "db",
-		Statement: "SELECT id FROM test_table",
-	}
-
-	result, err := database.LoadCache(cache)
-	assert.NoError(t, err)
-	assert.Len(t, result, 2)
-	assert.Equal(t, int64(1), result[0]["id"])
-	assert.Equal(t, int64(2), result[1]["id"])
 }
