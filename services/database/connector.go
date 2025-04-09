@@ -43,6 +43,21 @@ func (d *DBConnector) CloseConnection(){
   println("closed connection.")
 }
 
+func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
+	db, err := NewDBConnector().OpenConnection(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.CloseConnection()
+
+	result, err := db.FetchRows(config.Statement)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch rows: %w", err)
+	}
+
+	return result, nil
+}
+
 func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
 	rows, err := d.db.Query(query)
 	if err != nil {

@@ -37,9 +37,9 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 
 		if file.CacheConfig.HasCache(){
 			println("has cache")
-			seed, err = LoadCache(file.CacheConfig)
+			seed, err = database.LoadCache(file.CacheConfig)
 			if err != nil {
-				println("could not seed from db: ", err)
+				println(fmt.Sprint(err))
 			}
 		}
 
@@ -112,19 +112,4 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 	}
 
 	return record, nil
-}
-
-
-func LoadCache(config models.CacheConfig) ([]map[string]any, error) {
-
-	database, err := database.NewDBConnector().OpenConnection(config);
-	if err != nil{
-		println("failed to connect db...", err)
-	}
-	result, err := database.FetchRows(config.Statement)
-	if err != nil {
-		return nil, err
-	}
-	database.CloseConnection();
-	return result, nil
 }
