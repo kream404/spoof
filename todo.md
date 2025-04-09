@@ -6,6 +6,7 @@
 - unit testing
 - fix phone spoofer
 - make use multiple caches possible??
+- set db perms in env config, use profile argument
 
 - plugins
   - encryption service

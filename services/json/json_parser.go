@@ -26,18 +26,10 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 	return &config, nil
 }
 
-func ToJSONString(data interface{}) (string, error) {
+func ToJSONString(data any) (string, error) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return "", err
 	}
 	return string(jsonBytes), nil
-}
-
-func MapToJSON(data []map[string]interface{}) (string, error) {
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(jsonData), nil
 }
