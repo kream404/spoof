@@ -35,9 +35,12 @@ var rootCmd = &cobra.Command{
 		config, _ := json.LoadConfig(config_path)
 
 		if(verbose && config != nil) {
+			start := time.Now() // Start timer
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			csv.GenerateCSV(*config, "./output/output.csv")
+			elapsed := time.Since(start)
+			fmt.Printf("\n⏱️  Done in %s\n", elapsed)
 		}
 
 		if(scaffold && scaffold_name != ""){
@@ -70,11 +73,9 @@ func init() {
 
 // Execute runs the root command
 func Execute() {
-	start := time.Now() // Start timer
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	elapsed := time.Since(start)
-	fmt.Printf("\n⏱️  Done in %s\n", elapsed)
+
 }
