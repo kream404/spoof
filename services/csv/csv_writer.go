@@ -88,10 +88,14 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 	var record []string
 	for _, field := range file.Fields {
 		var value any
-		// var err error
-
+		var key string
 		if field.SeedType == "db" {
-			value = seed[seedIndex][field.Name]
+			if field.Alias != "" {
+				key = field.Alias
+			}else{
+				key = field.Name
+			}
+			value = seed[seedIndex][key]
 			// println("seeded value: ", fmt.Sprint(value))
 		} else {
 			factory, found := fakers.GetFakerByName(field.Type)

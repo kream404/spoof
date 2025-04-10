@@ -1,7 +1,7 @@
 CREATE SCHEMA account;
 
 CREATE TABLE account.customer (
-    customerid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customerstatusid INT CHECK (customerstatusid BETWEEN 1 AND 6),
     amount NUMERIC(10,2),
     updated_at TIMESTAMP,
