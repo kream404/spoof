@@ -35,13 +35,13 @@ func (f *RangeFaker) GetFormat() string {
 }
 
 //can pass a single value, multiple, string or int to store
-func NewRangeFaker(format string, values string, rng *rand.Rand) *RangeFaker {
-	if(len(values) <= 0){
+func NewRangeFaker(format string, valuesArray string, rng *rand.Rand) *RangeFaker {
+	if(valuesArray == ""){
 		log.Fatal("You must provide values attribute in schema when using 'range'.")
 	}
 	var parsedValues []any
 
-	parts := s.Split(values, ",")
+	parts := s.Split(valuesArray, ",")
 	for _, part := range parts {
 		trimmed := s.TrimSpace(part)
 		parsedValues = append(parsedValues, trimmed)

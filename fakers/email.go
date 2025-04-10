@@ -17,7 +17,7 @@ type EmailFaker struct {
 	rng      *rand.Rand
 }
 
-func (f *EmailFaker) Generate() (string, error) {
+func (f *EmailFaker) Generate() (any, error) {
 	email, err := f.NewEmail()
 	if err != nil {
 		return email, fmt.Errorf("failed to generate Email: %w", err)
@@ -59,6 +59,6 @@ func (f *EmailFaker) RandomString(length int) string {
 
 func init() {
 	RegisterFaker("email", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
-		return NewRangeFaker(field.Format, field.Values, rng), nil
+		return NewEmailFaker(field.Format, rng), nil
 	})
 }
