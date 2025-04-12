@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/kream404/spoof/models"
@@ -16,6 +17,7 @@ var config_path string
 var config models.FileConfig
 var scaffold string
 var scaffold_name string
+var profile string
 
 var rootCmd = &cobra.Command{
 	Use:   "spoof",
@@ -31,6 +33,16 @@ var rootCmd = &cobra.Command{
 		if version {
 			versionCmd.Run(cmd, args)
 			return
+		}
+
+		if profile != "" {
+			println("profile provided. loading connection profile: ", profile)
+			home, _ := os.UserHomeDir()
+			path := filepath.Join(home, "/.config/spoof/profiles.json")
+			_, err := json.LoadProfiles(path)
+			if err != nil {
+				panic(err)
+			}
 		}
 		config, _ := json.LoadConfig(config_path)
 
@@ -61,13 +73,14 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	//main flags
-	rootCmd.PersistentFlags().Bool("version", false, "show cli version")
-	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs")
-	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file")
+	rootCmd.PersistentFlags().BoolP("version", "v", false, "show cli version")
+	rootCmd.PersistentFlags().BoolP("verbose", "V", false, "show additional logs")
+	rootCmd.PersistentFlags().StringVarP(&config_path, "config", "c", "", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "", "db connection profile")
 
-	//faker generation
-	rootCmd.PersistentFlags().Bool("scaffold", false, "generate new faker scaffold")
-	rootCmd.PersistentFlags().StringVar(&scaffold_name, "scaffold_name", "", "name of new faker")
+	rootCmd.PersistentFlags().BoolP("scaffold", "s", false, "generate new faker scaffold")
+	rootCmd.PersistentFlags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
+
 
 }
 

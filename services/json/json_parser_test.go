@@ -10,7 +10,6 @@ import (
 func TestLoadConfig(t *testing.T) {
 	// Use existing schema file
 	schemaPath := filepath.Join("../../test", "test_config.json")
-
 	config, err := json.LoadConfig(schemaPath)
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)

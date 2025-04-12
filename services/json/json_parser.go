@@ -26,6 +26,26 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 	return &config, nil
 }
 
+func LoadProfiles(filepath string) (*models.Profiles, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+
+	decoder := json.NewDecoder(file)
+	var profiles models.Profiles
+	err = decoder.Decode(&profiles)
+	if err != nil {
+		return nil, err
+	}
+
+	println(ToJSONString(profiles));
+	return &profiles, nil
+}
+
+
 func ToJSONString(data any) (string, error) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
