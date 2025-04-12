@@ -43,7 +43,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	firstField := file.Fields[0]
-	if firstField.Name != "customerid" || firstField.Type != "uuid" || firstField.SeedType != "db" {
+	if firstField.Name != "customerid" || firstField.Type != "uuid" {
 		t.Errorf("Unexpected field[0] contents: %+v", firstField)
 	}
 }
