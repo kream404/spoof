@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-ini/ini"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/json"
@@ -43,14 +44,26 @@ var rootCmd = &cobra.Command{
 		if profile != "" {
 			println("profile provided. loading connection profile: ", profile)
 			home, _ := os.UserHomeDir()
-			path := filepath.Join(home, "/.config/spoof/profiles.json")
-			_, err := json.LoadProfiles(path)
-			if err != nil {
-				panic(err)
+			path := filepath.Join(home, "/.config/spoof/profiles.ini")
+			cfg, _ := ini.Load(path)
+			if cfg.HasSection(profile) {
+				println("setting profile: ", profile)
+			    section := cfg.Section(profile)
+			    dbProfile := models.Profile{
+			        Hostname: section.Key("db_hostname").String(),
+			        Port:     section.Key("db_port").String(),
+			        Username: section.Key("db_username").String(),
+			        Password: section.Key("db_password").String(),
+			    }
+			    fmt.Println("DB Hostname:", dbProfile.Hostname)
+			} else {
+			    println("profile not found in config file: ", profile)
+				println("set profile in /home/.config/spoof/profiles.ini")
+			    os.Exit(1)
 			}
 		}
-		config, _ := json.LoadConfig(config_path)
 
+		config, _ := json.LoadConfig(config_path)
 		if(verbose && config != nil) {
 			start := time.Now() // Start timer
 			fmt.Println("config path: ", config_path)
@@ -72,7 +85,6 @@ var rootCmd = &cobra.Command{
 			}
 			GenerateFaker(faker_config)
 		}
-
 	},
 }
 
@@ -91,5 +103,4 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
 }

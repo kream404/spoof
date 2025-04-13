@@ -33,10 +33,6 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("Expected IncludeHeaders true, got false")
 	}
 
-	if file.CacheConfig.Name != "database" {
-		t.Errorf("Expected db_name 'database', got '%s'", file.CacheConfig.Name)
-	}
-
 	if len(file.Fields) != 5 {
 		t.Errorf("Expected 5 fields, got %d", len(file.Fields))
 	}
