@@ -7,10 +7,6 @@
         "include_headers": true
       },
       "cache":{
-        "db_hostname": "localhost",
-        "db_port": "5432",
-        "db_username":"user",
-        "db_password":"password",
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [

@@ -53,3 +53,26 @@ type FileConfig struct {
 func (c CacheConfig) HasCache() bool {
 	return c != CacheConfig{}
 }
+
+func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
+	merged := profile
+	merged.Statement = c.Statement
+
+	if merged.Hostname == "" {
+		merged.Hostname = c.Hostname
+	}
+	if merged.Port == "" {
+		merged.Port = c.Port
+	}
+	if merged.Username == "" {
+		merged.Username = c.Username
+	}
+	if merged.Password == "" {
+		merged.Password = c.Password
+	}
+	if merged.Name == "" {
+		merged.Name = c.Name
+	}
+
+	return merged
+}

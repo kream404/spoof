@@ -11,6 +11,7 @@
         "db_port": "5432",
         "db_username":"user",
         "db_password":"password",
+        "db_name": "database",
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [

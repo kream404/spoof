@@ -16,7 +16,7 @@ import (
 
 var (
 	config_path    string
-	config         models.FileConfig
+	config         *models.FileConfig
 	scaffold       bool
 	scaffold_name  string
 	profile        string
@@ -39,33 +39,35 @@ var rootCmd = &cobra.Command{
 			versionCmd.Run(cmd, args)
 			return
 		}
-		//TODO: parse to map and fetch profile, inject into cache config - could also be provided in config
-		// could set profile in env config and fetch from there
+
+		//profile will always override config file - maybe this should be flipped
 		if profile != "" {
 			println("profile provided. loading connection profile: ", profile)
 			home, _ := os.UserHomeDir()
-			path := filepath.Join(home, "/.config/spoof/profiles.ini")
-			cfg, _ := ini.Load(path)
-			if cfg.HasSection(profile) {
-				println("setting profile: ", profile)
-			    section := cfg.Section(profile)
-			    dbProfile := models.Profile{
-			        Hostname: section.Key("db_hostname").String(),
-			        Port:     section.Key("db_port").String(),
-			        Username: section.Key("db_username").String(),
-			        Password: section.Key("db_password").String(),
-			    }
-			    fmt.Println("DB Hostname:", dbProfile.Hostname)
-			} else {
-			    println("profile not found in config file: ", profile)
-				println("set profile in /home/.config/spoof/profiles.ini")
-			    os.Exit(1)
+			cfg, _ := ini.Load(filepath.Join(home, "/.config/spoof/profiles.ini"))
+			println("setting profile:", profile)
+			config, _ = json.LoadConfig(config_path)
+
+			section := cfg.Section(profile)
+			profileCache := models.CacheConfig{
+				Hostname: section.Key("db_hostname").String(),
+				Port:     section.Key("db_port").String(),
+				Username: section.Key("db_username").String(),
+				Password: section.Key("db_password").String(),
+				Name: section.Key("db_name").String(),
+
 			}
+
+			// Merge the profile with the current config
+			println("before merge: ", profileCache.Name)
+			config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(profileCache)
+
+		}else{
+			config, _ = json.LoadConfig(config_path)
 		}
 
-		config, _ := json.LoadConfig(config_path)
 		if(verbose && config != nil) {
-			start := time.Now() // Start timer
+			start := time.Now()
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			csv.GenerateCSV(*config, "./output/output.csv")
@@ -89,7 +91,6 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// Use VarP to bind directly to variables
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "show cli version")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
 	rootCmd.Flags().StringVarP(&config_path, "config", "c", "", "path to config file")
@@ -97,7 +98,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
 	rootCmd.Flags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
 }
-// Execute runs the root command
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
