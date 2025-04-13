@@ -13,11 +13,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var config_path string
-var config models.FileConfig
-var scaffold string
-var scaffold_name string
-var profile string
+var (
+	config_path    string
+	config         models.FileConfig
+	scaffold       bool
+	scaffold_name  string
+	profile        string
+	versionFlag    bool
+	verbose        bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "spoof",
@@ -34,7 +38,8 @@ var rootCmd = &cobra.Command{
 			versionCmd.Run(cmd, args)
 			return
 		}
-
+		//TODO: parse to map and fetch profile, inject into cache config - could also be provided in config
+		// could set profile in env config and fetch from there
 		if profile != "" {
 			println("profile provided. loading connection profile: ", profile)
 			home, _ := os.UserHomeDir()
@@ -72,18 +77,14 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	//main flags
-	rootCmd.PersistentFlags().BoolP("version", "v", false, "show cli version")
-	rootCmd.PersistentFlags().BoolP("verbose", "V", false, "show additional logs")
-	rootCmd.PersistentFlags().StringVarP(&config_path, "config", "c", "", "path to config file")
-	rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "", "db connection profile")
-
-	rootCmd.PersistentFlags().BoolP("scaffold", "s", false, "generate new faker scaffold")
-	rootCmd.PersistentFlags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
-
-
+	// Use VarP to bind directly to variables
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "show cli version")
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
+	rootCmd.Flags().StringVarP(&config_path, "config", "c", "", "path to config file")
+	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "db connection profile")
+	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
+	rootCmd.Flags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
 }
-
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
