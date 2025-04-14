@@ -26,13 +26,12 @@ func NewDBConnector() *DBConnector {
 }
 
 func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, error){
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+ "password=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Password, config.Name)
-	println("psqlinfo: ", psqlInfo)
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+ "password=%s dbname=%s sslmode=prefer", config.Hostname, config.Port, config.Username, config.Password, config.Name)
+	println(psqlInfo)
 	database, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)
 	}
-	println("connected to db...")
 	return &DBConnector{DB: database}, nil
 }
 
@@ -41,7 +40,6 @@ func (d *DBConnector) CloseConnection(){
   if err != nil {
     panic(err)
   }
-  println("closed connection.")
 }
 
 func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, error) {

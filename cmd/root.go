@@ -10,6 +10,7 @@ import (
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/json"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
 )
@@ -41,25 +42,29 @@ var rootCmd = &cobra.Command{
 		}
 
 		//profile will always override config file - maybe this should be flipped
-		if profile != "" {
-			println("profile provided. loading connection profile: ", profile)
+		if (profile != "" && config_path != "")  {
+			fmt.Println("=================================")
+			println("loading connection profile: ", profile)
 			home, _ := os.UserHomeDir()
 			cfg, _ := ini.Load(filepath.Join(home, "/.config/spoof/profiles.ini"))
-			println("setting profile:", profile)
+			section := cfg.Section(profile)
+
 			config, _ = json.LoadConfig(config_path)
 
-			section := cfg.Section(profile)
 			profileCache := models.CacheConfig{
 				Hostname: section.Key("db_hostname").String(),
 				Port:     section.Key("db_port").String(),
 				Username: section.Key("db_username").String(),
 				Password: section.Key("db_password").String(),
 				Name: section.Key("db_name").String(),
-
 			}
 
-			// Merge the profile with the current config
-			println("before merge: ", profileCache.Name)
+			if profileCache.Password == "" {
+				print("enter db password: ");
+				input, _ := terminal.ReadPassword(0)
+				profileCache.Password = string(input)
+				println("from input: ", profileCache.Password)
+			}
 			config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(profileCache)
 
 		}else{
