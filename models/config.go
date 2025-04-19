@@ -29,15 +29,16 @@ type CacheConfig struct {
 
 type Field struct {
 	Name       string   `json:"name"`
-	Alias	   string   `json:"alias"`
+	Alias	   	 string   `json:"alias"`
 	Type       string   `json:"type"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
 	Format     string   `json:"format,omitempty"`
-	Min        float64    `json:"min,omitempty"`
-	Max        float64    `json:"max,omitempty"`
-	Value     string 	`json:"value,omitempty"`
+	Min        float64  `json:"min,omitempty"`
+	Max        float64  `json:"max,omitempty"`
+	Value      string 	`json:"value,omitempty"`
 	Values     string 	`json:"values,omitempty"`
+	Target 		 string 	`json:"target,omitempty"`
 	SeedType   string   `json:"seed_type,omitempty"`
 }
 

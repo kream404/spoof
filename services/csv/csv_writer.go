@@ -86,24 +86,32 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 
 func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
+	generatedFields := make(map[string]string)
+
 	for _, field := range file.Fields {
 		var value any
 		var key string
 
-		if field.Type == "" {
+		switch {
+		case field.Type == "":
 			value = field.Value
-		}
 
-		if field.SeedType == "db" {
+		case field.SeedType == "db":
 			if field.Alias != "" {
 				key = field.Alias
-			}else{
+			} else {
 				key = field.Name
 			}
 			value = seed[seedIndex][key]
-		}
 
-		if field.Type != ""{
+		case field.Type == "reflection":
+			targetValue, ok := generatedFields[field.Target]
+			if !ok {
+				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+			}
+			value = targetValue
+
+		default:
 			factory, found := fakers.GetFakerByName(field.Type)
 			if !found {
 				return nil, fmt.Errorf("faker not found for type: %s", field.Type)
@@ -118,8 +126,9 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 			}
 		}
 
-		record = append(record, fmt.Sprint(value))
+		valueStr := fmt.Sprint(value)
+		generatedFields[field.Name] = valueStr
+		record = append(record, valueStr)
 	}
-
 	return record, nil
 }
