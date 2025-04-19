@@ -11,6 +11,9 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
+
+	"github.com/briandowns/spinner"
+	"time"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -43,8 +46,12 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
+		// start spinner
+		s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+		s.Prefix = "spoofing	"
+		s.Start()
+
 		rng := rand.New(rand.NewSource(42))
-		println("spoofing...")
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, seed, seedIndex, rng)
 			if err != nil {
