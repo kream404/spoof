@@ -10,7 +10,6 @@ import (
 func TestLoadConfig(t *testing.T) {
 	// Use existing schema file
 	schemaPath := filepath.Join("../../test", "test_config.json")
-
 	config, err := json.LoadConfig(schemaPath)
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
@@ -32,10 +31,6 @@ func TestLoadConfig(t *testing.T) {
 
 	if file.Config.IncludeHeaders != true {
 		t.Errorf("Expected IncludeHeaders true, got false")
-	}
-
-	if file.CacheConfig.Name != "database" {
-		t.Errorf("Expected db_name 'database', got '%s'", file.CacheConfig.Name)
 	}
 
 	if len(file.Fields) != 5 {

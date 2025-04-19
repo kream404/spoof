@@ -3,19 +3,27 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/go-ini/ini"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/json"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
 )
 
-var config_path string
-var config models.FileConfig
-var scaffold string
-var scaffold_name string
+var (
+	config_path    string
+	config         *models.FileConfig
+	scaffold       bool
+	scaffold_name  string
+	profile        string
+	versionFlag    bool
+	verbose        bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "spoof",
@@ -32,10 +40,39 @@ var rootCmd = &cobra.Command{
 			versionCmd.Run(cmd, args)
 			return
 		}
-		config, _ := json.LoadConfig(config_path)
+
+		//profile will always override config file - maybe this should be flipped
+		if (profile != "" && config_path != "")  {
+			fmt.Println("=================================")
+			println("loading connection profile: ", profile)
+			home, _ := os.UserHomeDir()
+			cfg, _ := ini.Load(filepath.Join(home, "/.config/spoof/profiles.ini"))
+			section := cfg.Section(profile)
+
+			config, _ = json.LoadConfig(config_path)
+
+			profileCache := models.CacheConfig{
+				Hostname: section.Key("db_hostname").String(),
+				Port:     section.Key("db_port").String(),
+				Username: section.Key("db_username").String(),
+				Password: section.Key("db_password").String(),
+				Name: section.Key("db_name").String(),
+			}
+
+			if profileCache.Password == "" {
+				print("enter db password: ");
+				input, _ := terminal.ReadPassword(0)
+				profileCache.Password = string(input)
+				println("from input: ", profileCache.Password)
+			}
+			config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(profileCache)
+
+		}else{
+			config, _ = json.LoadConfig(config_path)
+		}
 
 		if(verbose && config != nil) {
-			start := time.Now() // Start timer
+			start := time.Now()
 			fmt.Println("config path: ", config_path)
 			fmt.Println("=================================")
 			csv.GenerateCSV(*config, "./output/output.csv")
@@ -55,27 +92,21 @@ var rootCmd = &cobra.Command{
 			}
 			GenerateFaker(faker_config)
 		}
-
 	},
 }
 
 func init() {
-	//main flags
-	rootCmd.PersistentFlags().Bool("version", false, "show cli version")
-	rootCmd.PersistentFlags().Bool("verbose", false, "show additional logs")
-	rootCmd.PersistentFlags().StringVar(&config_path, "config", "", "path to config file")
-
-	//faker generation
-	rootCmd.PersistentFlags().Bool("scaffold", false, "generate new faker scaffold")
-	rootCmd.PersistentFlags().StringVar(&scaffold_name, "scaffold_name", "", "name of new faker")
-
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "show cli version")
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
+	rootCmd.Flags().StringVarP(&config_path, "config", "c", "", "path to config file")
+	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "db connection profile")
+	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
+	rootCmd.Flags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
 }
 
-// Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
 }

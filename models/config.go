@@ -7,18 +7,29 @@ type Config struct {
 	IncludeHeaders bool   `json:"include_headers"`
 }
 
+type Profiles struct {
+	Profiles    []Profile  `json:"profiles"`
+}
+
+type Profile struct {
+	Hostname   string  `json:"db_hostname"`
+	Port   	   string  `json:"db_port"`
+	Username   string  `json:"db_username"`
+	Password   string  `json:"db_password"`
+}
+
 type CacheConfig struct {
 	Hostname    string  `json:"db_hostname"`
-	Port   		 		 string  `json:"db_port"`
-	Username   		 string  `json:"db_username"`
-	Password   string  `json:"db_password"`
-	Name			 string  `json:"db_name"`
-	Statement  string	 `json:"statement"`
+	Port   		string  `json:"db_port"`
+	Username   	string  `json:"db_username"`
+	Password    string  `json:"db_password"`
+	Name	    string  `json:"db_name"`
+	Statement   string	 `json:"statement"`
 }
 
 type Field struct {
 	Name       string   `json:"name"`
-	Alias			 string   `json:"alias"`
+	Alias	   string   `json:"alias"`
 	Type       string   `json:"type"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
@@ -41,4 +52,27 @@ type FileConfig struct {
 
 func (c CacheConfig) HasCache() bool {
 	return c != CacheConfig{}
+}
+
+func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
+	merged := profile
+	merged.Statement = c.Statement
+
+	if merged.Hostname == "" {
+		merged.Hostname = c.Hostname
+	}
+	if merged.Port == "" {
+		merged.Port = c.Port
+	}
+	if merged.Username == "" {
+		merged.Username = c.Username
+	}
+	if merged.Password == "" {
+		merged.Password = c.Password
+	}
+	if merged.Name == "" {
+		merged.Name = c.Name
+	}
+
+	return merged
 }

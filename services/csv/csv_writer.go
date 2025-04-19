@@ -39,6 +39,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			seed, err = database.NewDBConnector().LoadCache(file.CacheConfig)
 			if err != nil {
 				println(fmt.Sprint(err))
+				os.Exit(1) //if we provide a cache, and cant populate it throw an error
 			}
 		}
 
