@@ -10,6 +10,7 @@
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [
+        { "name": "hardcoded", "value": "harcoded" },
         { "name": "customerid", "type": "uuid" },
         { "name": "customerstatusid", "type": "range", "values": "1, 2, 3, 4, 5, 6" },
         { "name": "amount", "type": "number", "min": -2000.00, "max": 2000.00 },
