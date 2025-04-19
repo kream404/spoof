@@ -27,7 +27,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "spoof",
-	Short: "A brief description of your CLI",
+	Short: "A tool for generating csv's.",
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// multiple returns, _ indicates ignore the error. neato
