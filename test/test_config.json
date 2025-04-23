@@ -1,12 +1,13 @@
 {
   "files": [{
       "config": {
-        "file_name": "testfile3.csv",
+        "file_name": "testfile.csv",
         "delimiter": "|",
         "rowcount": "5",
         "include_headers": true
       },
       "cache":{
+        "seed": "provided_seed",
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [

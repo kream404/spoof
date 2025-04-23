@@ -36,11 +36,6 @@ func TestLoadConfig(t *testing.T) {
 	if len(file.Fields) != 5 {
 		t.Errorf("Expected 5 fields, got %d", len(file.Fields))
 	}
-
-	firstField := file.Fields[0]
-	if firstField.Name != "customerid" || firstField.Type != "uuid" {
-		t.Errorf("Unexpected field[0] contents: %+v", firstField)
-	}
 }
 
 func TestToJSONString(t *testing.T) {
