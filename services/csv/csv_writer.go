@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"hash/fnv"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -61,7 +60,8 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Printf("Row Error: %v\n", err)
+				os.Exit(1)
 			}
 			if err := writer.Write(row); err != nil {
 				fmt.Printf("CSV Write Error: %v\n", err)

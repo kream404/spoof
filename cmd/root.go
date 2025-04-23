@@ -49,7 +49,13 @@ var rootCmd = &cobra.Command{
 			cfg, _ := ini.Load(filepath.Join(home, "/.config/spoof/profiles.ini"))
 			section := cfg.Section(profile)
 
-			config, _ = json.LoadConfig(config_path)
+			var err error
+			config, err = json.LoadConfig(config_path)
+
+			if err != nil {
+				println("failed to load json config: ", fmt.Sprint(err))
+				os.Exit(1)
+			}
 			profile := models.CacheConfig{
 				Hostname: section.Key("hostname").String(),
 				Port:     section.Key("port").String(),
