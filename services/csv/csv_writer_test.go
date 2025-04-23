@@ -21,7 +21,7 @@ func TestGenerateValues_WithFaker(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	row, err := csvgen.GenerateValues(entity, nil, 0, rng)
+	row, err := csvgen.GenerateValues(entity, nil, 0, 0, rng)
 
 	assert.NoError(t, err)
 	assert.Len(t, row, 1)
@@ -40,7 +40,7 @@ func TestGenerateValues_WithSeed(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	row, err := csvgen.GenerateValues(entity, seed, 0, rng)
+	row, err := csvgen.GenerateValues(entity, seed, 0, 0, rng)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"42"}, row)

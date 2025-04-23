@@ -21,7 +21,8 @@ import (
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	var cache []map[string]any
-	var rowIndex = 0
+	var cacheIndex, rowIndex = 0, 1 //cacheindex tracks row in cache, rowindex tracks row in file..
+
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
@@ -57,16 +58,19 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		// rng := rand.New(rand.NewSource(42))
 		rng := CreateRNGSeed(file.CacheConfig);
 		for range file.Config.RowCount {
-			row, err := GenerateValues(file, cache, rowIndex, rng)
+			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if err := writer.Write(row); err != nil {
 				fmt.Printf("CSV Write Error: %v\n", err)
 			}
+
+			cacheIndex++ //increment pointers
 			rowIndex++
-			if len(cache) > 0 && rowIndex >= len(cache) {
-				rowIndex = 0
+
+			if len(cache) > 0 && cacheIndex >= len(cache) {
+				cacheIndex = 0
 			}
 		}
 
@@ -95,7 +99,7 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rng *rand.Rand) ([]string, error) {
+func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
 	generatedFields := make(map[string]string)
 
@@ -104,37 +108,40 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 		var key string
 
 		switch {
-		case field.Type == "":
-			value = field.Value
+			case field.Type == "":
+				value = field.Value
 
-		case field.SeedType == "db":
-			if field.Alias != "" {
-				key = field.Alias
-			} else {
-				key = field.Name
-			}
-			value = seed[seedIndex][key]
+			case field.SeedType == "db":
+				if field.Alias != "" {
+					key = field.Alias
+				} else {
+					key = field.Name
+				}
+				value = seed[seedIndex][key]
 
-		case field.Type == "reflection":
-			targetValue, ok := generatedFields[field.Target]
-			if !ok {
-				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
-			}
-			value = targetValue
+			case field.Type == "reflection":
+				targetValue, ok := generatedFields[field.Target]
+				if !ok {
+					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+				}
+				value = targetValue
 
-		default:
-			factory, found := fakers.GetFakerByName(field.Type)
-			if !found {
-				return nil, fmt.Errorf("faker not found for type: %s", field.Type)
-			}
-			faker, err := factory(field, rng)
-			if err != nil {
-				return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
-			}
-			value, err = faker.Generate()
-			if err != nil {
-				return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
-			}
+			case field.Type == "iterator":
+				value = rowIndex
+
+			default:
+				factory, found := fakers.GetFakerByName(field.Type)
+				if !found {
+					return nil, fmt.Errorf("faker not found for type: %s", field.Type)
+				}
+				faker, err := factory(field, rng)
+				if err != nil {
+					return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
+				}
+				value, err = faker.Generate()
+				if err != nil {
+					return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+				}
 		}
 
 		valueStr := fmt.Sprint(value)
