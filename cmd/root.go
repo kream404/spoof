@@ -50,8 +50,7 @@ var rootCmd = &cobra.Command{
 			section := cfg.Section(profile)
 
 			config, _ = json.LoadConfig(config_path)
-
-			profileCache := models.CacheConfig{
+			profile := models.CacheConfig{
 				Hostname: section.Key("db_hostname").String(),
 				Port:     section.Key("db_port").String(),
 				Username: section.Key("db_username").String(),
@@ -59,13 +58,12 @@ var rootCmd = &cobra.Command{
 				Name: section.Key("db_name").String(),
 			}
 
-			if profileCache.Password == "" {
+			if profile.Password == "" {
 				print("enter db password: ");
 				input, _ := terminal.ReadPassword(0)
-				profileCache.Password = string(input)
-				println("from input: ", profileCache.Password)
+				profile.Password = string(input)
 			}
-			config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(profileCache)
+			config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(profile)
 
 		}else{
 			config, _ = json.LoadConfig(config_path)

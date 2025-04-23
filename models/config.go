@@ -20,11 +20,12 @@ type Profile struct {
 
 type CacheConfig struct {
 	Hostname    string  `json:"db_hostname"`
-	Port   		string  `json:"db_port"`
+	Port   			string  `json:"db_port"`
 	Username   	string  `json:"db_username"`
 	Password    string  `json:"db_password"`
-	Name	    string  `json:"db_name"`
-	Statement   string	 `json:"statement"`
+	Name	    	string  `json:"db_name"`
+	Statement   string	`json:"statement"`
+	Seed				string	`json:"seed,omitempty"`
 }
 
 type Field struct {
@@ -56,8 +57,13 @@ func (c CacheConfig) HasCache() bool {
 	return c != CacheConfig{}
 }
 
+func (c CacheConfig) HasSeed() bool {
+	return c.Seed != "";
+}
+
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
+  merged.Seed = c.Seed //TODO: these must be provided in config file so must be overriden, could probably refactor the merge func cause this is kinda ugly
 	merged.Statement = c.Statement
 
 	if merged.Hostname == "" {

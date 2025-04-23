@@ -3,22 +3,25 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
 
-	"github.com/briandowns/spinner"
 	"time"
+
+	"github.com/briandowns/spinner"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
-	var seed []map[string]any
-	var seedIndex = 0
+	var cache []map[string]any
+	var rowIndex = 0
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
@@ -39,7 +42,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		}
 
 		if file.CacheConfig.HasCache(){
-			seed, err = database.NewDBConnector().LoadCache(file.CacheConfig)
+			cache, err = database.NewDBConnector().LoadCache(file.CacheConfig)
 			if err != nil {
 				println(fmt.Sprint(err))
 				os.Exit(1) //if we provide a cache, and cant populate it throw an error
@@ -51,18 +54,19 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		s.Prefix = "spoofing	"
 		s.Start()
 
-		rng := rand.New(rand.NewSource(42))
+		// rng := rand.New(rand.NewSource(42))
+		rng := CreateRNGSeed(file.CacheConfig);
 		for range file.Config.RowCount {
-			row, err := GenerateValues(file, seed, seedIndex, rng)
+			row, err := GenerateValues(file, cache, rowIndex, rng)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if err := writer.Write(row); err != nil {
 				fmt.Printf("CSV Write Error: %v\n", err)
 			}
-			seedIndex++
-			if len(seed) > 0 && seedIndex >= len(seed) {
-				seedIndex = 0
+			rowIndex++
+			if len(cache) > 0 && rowIndex >= len(cache) {
+				rowIndex = 0
 			}
 		}
 
@@ -138,4 +142,24 @@ func GenerateValues(file models.Entity, seed []map[string]any, seedIndex int, rn
 		record = append(record, valueStr)
 	}
 	return record, nil
+}
+
+
+func stringToSeed(s string) int64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return int64(h.Sum64())
+}
+
+func CreateRNGSeed(config models.CacheConfig) *rand.Rand {
+	var seed int64
+	if config.HasSeed() {
+		println("seed provided: ", config.Seed);
+		seed = stringToSeed(config.Seed)
+	}else{
+		s := uuid.NewString()
+		println("seed generated: ", s);
+		seed = stringToSeed(s)
+	}
+	return rand.New(rand.NewSource(seed))
 }
