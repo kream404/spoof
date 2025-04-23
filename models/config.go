@@ -12,18 +12,18 @@ type Profiles struct {
 }
 
 type Profile struct {
-	Hostname   string  `json:"db_hostname"`
-	Port   	   string  `json:"db_port"`
-	Username   string  `json:"db_username"`
-	Password   string  `json:"db_password"`
+	Hostname   string  `json:"hostname"`
+	Port   	   string  `json:"port"`
+	Username   string  `json:"username"`
+	Password   string  `json:"password"`
 }
 
 type CacheConfig struct {
-	Hostname    string  `json:"db_hostname"`
-	Port   			string  `json:"db_port"`
-	Username   	string  `json:"db_username"`
-	Password    string  `json:"db_password"`
-	Name	    	string  `json:"db_name"`
+	Hostname    string  `json:"hostname"`
+	Port   			string  `json:"port"`
+	Username   	string  `json:"username"`
+	Password    string  `json:"password"`
+	Name	    	string  `json:"name"`
 	Statement   string	`json:"statement"`
 	Seed				string	`json:"seed,omitempty"`
 }
@@ -32,6 +32,7 @@ type Field struct {
 	Name       string   `json:"name"`
 	Alias	   	 string   `json:"alias"`
 	Type       string   `json:"type"`
+	Modifier   *float64   `json:"modifier,omitempty"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
 	Format     string   `json:"format,omitempty"`

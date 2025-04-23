@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/kream404/spoof/fakers"
@@ -119,12 +120,20 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 				}
 				value = seed[seedIndex][key]
 
-			case field.Type == "reflection":
+			case field.Type == "reflection": //TODO: I dont like this, this could get out of hand quickly. not sure where this should live
 				targetValue, ok := generatedFields[field.Target]
 				if !ok {
 					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 				}
+
 				value = targetValue
+				if field.Modifier != nil {
+					if parsed, err := strconv.ParseFloat(targetValue, 64); err == nil {
+						value = parsed * *field.Modifier
+					} else {
+						fmt.Printf("modifier ignored: '%s' is not a numeric string\n", targetValue)
+					}
+				}
 
 			case field.Type == "iterator":
 				value = rowIndex

@@ -51,11 +51,11 @@ var rootCmd = &cobra.Command{
 
 			config, _ = json.LoadConfig(config_path)
 			profile := models.CacheConfig{
-				Hostname: section.Key("db_hostname").String(),
-				Port:     section.Key("db_port").String(),
-				Username: section.Key("db_username").String(),
-				Password: section.Key("db_password").String(),
-				Name: section.Key("db_name").String(),
+				Hostname: section.Key("hostname").String(),
+				Port:     section.Key("port").String(),
+				Username: section.Key("username").String(),
+				Password: section.Key("password").String(),
+				Name: section.Key("name").String(),
 			}
 
 			if profile.Password == "" {
