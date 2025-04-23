@@ -21,8 +21,6 @@ func LoadConfig(filepath string) (*models.FileConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// println(ToJSONString(config.Files[0].CacheConfig));
 	return &config, nil
 }
 
