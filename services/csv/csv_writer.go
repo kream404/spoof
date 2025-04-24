@@ -168,14 +168,18 @@ func stringToSeed(s string) int64 {
 }
 
 func CreateRNGSeed(config models.CacheConfig) *rand.Rand {
+	var s string
 	var seed int64
 	if config.HasSeed() {
-		println("seed provided: ", config.Seed);
-		seed = stringToSeed(config.Seed)
+		s = config.Seed
 	}else{
-		s := uuid.NewString()
-		println("seed generated: ", s);
-		seed = stringToSeed(s)
+		s = uuid.NewString()
 	}
+
+	fmt.Println("========================================")
+	println("seed: ", s);
+	fmt.Println("========================================")
+
+	seed = stringToSeed(s)
 	return rand.New(rand.NewSource(seed))
 }

@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 
 		//profile will always override config file - maybe this should be flipped
 		if (profile != "" && config_path != "")  {
-			fmt.Println("=================================")
+			fmt.Println("========================================")
 			println("loading connection profile: ", profile)
 			home, _ := os.UserHomeDir()
 			cfg, _ := ini.Load(filepath.Join(home, "/.config/spoof/profiles.ini"))
@@ -78,7 +78,7 @@ var rootCmd = &cobra.Command{
 		if(verbose && config != nil) {
 			start := time.Now()
 			fmt.Println("config path: ", config_path)
-			fmt.Println("=================================")
+			fmt.Println("========================================")
 			csv.GenerateCSV(*config, "./output/output.csv")
 			elapsed := time.Since(start)
 			fmt.Printf("\n⏱️  Done in %s\n", elapsed)
