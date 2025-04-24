@@ -1,5 +1,7 @@
 ## Config
 
+Please reference the `sample.json` in the repo when consulting the documentation.
+
 ### Cache Configuration
 
 The `cache` section of the configuration defines the connection parameters for a database and settings for reproducible data generation.
