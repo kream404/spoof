@@ -19,11 +19,7 @@ type NumberFaker struct {
 
 func (f *NumberFaker) Generate() (any, error) {
 	rawValue := f.min + f.rng.Float64()*(f.max-f.min)
-	decimals, err := strconv.Atoi(f.format);
-
-	if err != nil{
-		decimals = 2 //default value of 2 decimals
-	}
+	decimals, _ := strconv.Atoi(f.format);
 	return roundToDecimal(rawValue, decimals), nil
 }
 
@@ -43,7 +39,7 @@ func (f *NumberFaker) GetFormat() string {
 func NewNumberFaker(format string, min float64, max float64, rng *rand.Rand) *NumberFaker {
 	return &NumberFaker{
 		datatype: models.Type("Number"),
-		format:   "format",
+		format:   format,
 		min: min,
 		max: max,
 		rng: rng,
