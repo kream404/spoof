@@ -20,7 +20,7 @@ Here is an example of the `cache` section:
   "password": "password",
   "name": "database",
   "seed": "4d810b2c-f1ca-46dc-9240-b7b19f1fc46e",
-  "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
+  "statement": "SELECT customerid, amount, customer_email FROM account.customer;"
 }
 ```
 
@@ -36,10 +36,10 @@ Any run without a seed will output the seed used in generation to the console, w
 
 When configuring your CSV generation, each field in the `fields` array represents a column with specific data logic. The name provided will be the name of the column in the output file.
 
-Any field can be seeded from the database using the following syntax. If you want to have the column name in the ouput differ from the column name of the database, you can pass an alias. This will be database column, and the name will be the csv column.
+Any field can be seeded from the database using the following syntax. If you want to have the column name in the ouput differ from the column name of the database, you can pass an alias. This will be the database column, and the name will be the csv column.
 
 ```json
-{ ..."seed_type":"db", "alias":"customerid" }
+{ ... "name":"id", "seed_type":"db", "alias":"customerid" }
 ```
 
 ---
