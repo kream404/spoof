@@ -90,7 +90,7 @@ Selects a random value from a defined set of options.
 
 ### `number`
 
-Generates a random floating-point number between a minimum and maximum. An optional format can be passed to specify the number of decimal places
+Generates a random floating-point number between a minimum and maximum. An optional format can be passed to specify the number of decimal places. This will default to 0 if not provided.
 
 ```json
 { "name": "amount", "type": "number", "format": "2", "min": -2000.00, "max": 2000.00 },
@@ -120,7 +120,7 @@ Generates an email address. This currently just a random string.
 
 ### `reflection`
 
-Copies the value of another field. Can optionally modifying numeric inputs. The target will be multiplied by the modifier.
+Copies the value of another field. Can optionally modify numeric inputs by supplying a `modifier`. The target will be multiplied by the modifier.
 
 ```json
 { "name": "inverse", "type": "reflection", "target": "amount", "modifier": -1 }
