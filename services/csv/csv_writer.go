@@ -109,7 +109,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 		var key string
 
 		switch {
-			case field.Type == "":
+			case field.Type == "" && field.Value != "":
 				value = field.Value
 
 			case field.SeedType == "db":
