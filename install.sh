@@ -36,27 +36,27 @@ else
     exit 1
 fi
 
-#install go
+SHELL_RC=$(detect_shell_rc)
+PATH_UPDATE_NEEDED=false
+
+# Install Go if missing
 if ! command -v go &> /dev/null; then
     echo "🔵 Installing Go ($GO_TARBALL)..."
-
     wget "https://go.dev/dl/${GO_TARBALL}"
     sudo rm -rf /usr/local/go
     sudo tar -C /usr/local -xzf "${GO_TARBALL}"
 
-    SHELL_RC=$(detect_shell_rc)
-
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_RC"
+    if ! grep -q "/usr/local/go/bin" "$SHELL_RC"; then
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_RC"
+        PATH_UPDATE_NEEDED=true
+    fi
     export PATH=$PATH:/usr/local/go/bin
-
-    echo "Go installed."
-    echo "Added Go to your PATH in $SHELL_RC."
-    echo "Please restart your terminal or run: source $SHELL_RC"
+    echo "Go installed and added to PATH."
 else
     echo "Go already installed. Skipping installation."
 fi
 
-# clone and build
+# Clone spoof repo if missing
 if [ ! -d "spoof" ]; then
     echo "🔵 Cloning spoof repository..."
     git clone https://github.com/kream404/spoof.git
@@ -71,22 +71,24 @@ cd spoof
 echo "🔵 Building spoof CLI..."
 go build -o spoof main.go
 
-# move spoof binary to $HOME/go/bin (or /usr/local/bin)
 if [ ! -d "$HOME/go/bin" ]; then
     mkdir -p "$HOME/go/bin"
 fi
 
-mv spoof "$HOME/go/bin/"
-
-# Add $HOME/go/bin to PATH if not already there
-SHELL_RC=$(detect_shell_rc)
+mv -f spoof "$HOME/go/bin/"
 
 if ! grep -q "$HOME/go/bin" "$SHELL_RC"; then
-    echo "export PATH=\$PATH:$HOME/go/bin" >> "$SHELL_RC"
-    echo "Added $HOME/go/bin to your PATH in $SHELL_RC"
+    echo 'export PATH=$PATH:$HOME/go/bin' >> "$SHELL_RC"
+    PATH_UPDATE_NEEDED=true
+fi
+
+if [ "$PATH_UPDATE_NEEDED" = true ]; then
+    echo "🔵 Updated your $SHELL_RC file."
     echo "Please restart your terminal or run: source $SHELL_RC"
 fi
 
-echo "Done! You can now run spoof -c /path/to/config.json"
-
-echo "Done! You can now run ./spoof -c /path/to/config.json"
+echo "Install complete!"
+echo "------------------"
+echo "You can now run:"
+echo ""
+echo "spoof -c /path/to/config.json"
