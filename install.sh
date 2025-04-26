@@ -89,6 +89,5 @@ fi
 
 echo "Install complete!"
 echo "------------------"
-echo "You can now run:"
-echo ""
-echo "spoof -c /path/to/config.json"
+echo "You can now run: 'spoof -v' to verify your install."
+echo "Usage: spoof -c /path/to/config.json"
