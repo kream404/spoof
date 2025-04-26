@@ -8,6 +8,15 @@
 - Generate structured CSV files based on JSON config.
 - Optionally seed data from DB
 ---
+## Installation
+
+Currently only Mac and Linux systems are supported. Windows users can install via WSL. To install run the command below.
+
+```bash
+git clone https://github.com/kream404/spoof.git && cd spoof && ./install.sh
+```
+
+---
 
 ## Usage
 
