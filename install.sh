@@ -42,7 +42,7 @@ PATH_UPDATE_NEEDED=false
 # Install Go if missing
 if ! command -v go &> /dev/null; then
     echo "🔵 Installing Go ($GO_TARBALL)..."
-    wget "https://go.dev/dl/${GO_TARBALL}"
+    curl -O "https://go.dev/dl/${GO_TARBALL}"
     sudo rm -rf /usr/local/go
     sudo tar -C /usr/local -xzf "${GO_TARBALL}"
 
