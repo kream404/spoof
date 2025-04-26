@@ -28,11 +28,11 @@ elif [ "$OS" = "Darwin" ]; then
     elif [ "$ARCH" = "arm64" ]; then
         GO_TARBALL="go${GO_VERSION}.darwin-arm64.tar.gz"
     else
-        echo "❌ Unsupported Mac architecture: $ARCH"
+        echo "Unsupported Mac architecture: $ARCH"
         exit 1
     fi
 else
-    echo "❌ Unsupported OS: $OS"
+    echo "Unsupported OS: $OS"
     exit 1
 fi
 
@@ -43,15 +43,18 @@ PATH_UPDATE_NEEDED=false
 if ! command -v go &> /dev/null; then
     echo "🔵 Installing Go ($GO_TARBALL)..."
     curl -O "https://go.dev/dl/${GO_TARBALL}"
-    sudo rm -rf /usr/local/go
-    sudo tar -C /usr/local -xzf "${GO_TARBALL}"
 
-    if ! grep -q "/usr/local/go/bin" "$SHELL_RC"; then
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_RC"
+    rm -rf "$HOME/go"
+    mkdir -p "$HOME/go"
+    tar -C "$HOME" -xzf "${GO_TARBALL}"
+
+    if ! grep -q "$HOME/go/bin" "$SHELL_RC"; then
+        echo 'export PATH=$PATH:$HOME/go/bin' >> "$SHELL_RC"
         PATH_UPDATE_NEEDED=true
     fi
-    export PATH=$PATH:/usr/local/go/bin
-    echo "Go installed and added to PATH."
+
+    export PATH=$PATH:$HOME/go/bin
+    echo "Go installed to $HOME/go and added to PATH."
 else
     echo "Go already installed. Skipping installation."
 fi
@@ -88,6 +91,6 @@ if [ "$PATH_UPDATE_NEEDED" = true ]; then
 fi
 
 echo "Install complete!"
-echo "------------------"
+echo "---------------------"
 echo "You can now run: 'spoof -v' to verify your install."
 echo "Usage: spoof -c /path/to/config.json"
