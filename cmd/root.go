@@ -43,34 +43,29 @@ var rootCmd = &cobra.Command{
 		    var genArgs []string
 		    reader := bufio.NewReader(os.Stdin)
 
-		    println("generating new config file.")
+		    println("generating new config file..")
+				fmt.Println("========================================")
 
 				print("name of config file: ")
 		    output_name, _ := reader.ReadString('\n')
 		    genArgs = append(genArgs, strings.TrimSpace(output_name))
-		    println("config file in:", output_name)
 
-		    print("filename: ")
+		    print("name of output file: ")
 		    file_name, _ := reader.ReadString('\n')
 		    genArgs = append(genArgs, strings.TrimSpace(file_name))
-		    println("filename in:", file_name)
 
 		    print("delimiter: ")
 		    delimiter, _ := reader.ReadString('\n')
 		    genArgs = append(genArgs, strings.TrimSpace(delimiter))
-		    println("delimiter in:", delimiter)
 
-		    print("rowcount: ")
+		    print("row count: ")
 		    rowcount, _ := reader.ReadString('\n')
 		    genArgs = append(genArgs, strings.TrimSpace(rowcount))
-		    println("rowcount in:", rowcount)
 
 		    print("include headers [Y/n]: ")
 		    headers, _ := reader.ReadString('\n')
 		    genArgs = append(genArgs, strings.TrimSpace(headers))
-		    println("headers in:", headers)
 
-		    fmt.Println("genArgs:", genArgs)
 		    generateCmd.Run(cmd, genArgs)
 		}
 

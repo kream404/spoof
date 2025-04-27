@@ -56,7 +56,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		s.Start()
 
 		// rng := rand.New(rand.NewSource(42))
-		rng := CreateRNGSeed(file.CacheConfig);
+		rng := CreateRNGSeed(file.Config.Seed);
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
@@ -167,16 +167,15 @@ func stringToSeed(s string) int64 {
 	return int64(h.Sum64())
 }
 
-func CreateRNGSeed(config models.CacheConfig) *rand.Rand {
+func CreateRNGSeed(seed_in string) *rand.Rand {
 	var s string
 	var seed int64
-	if config.HasSeed() {
-		s = config.Seed
+	if seed_in != "" {
+		s = seed_in
 	}else{
 		s = uuid.NewString()
 	}
 
-	fmt.Println("========================================")
 	println("seed: ", s);
 	fmt.Println("========================================")
 

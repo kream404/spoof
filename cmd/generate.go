@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -47,7 +46,6 @@ var generateCmd = &cobra.Command{
 			Headers:        headers,
 		}
 
-		// Call to generate the config file
 		GenerateConfigFile(config)
 	},
 }
@@ -57,14 +55,13 @@ const GenerateTemplate = `{
     "config": {
       "file_name": "{{ .FileName }}",
       "delimiter": "{{ .Delimiter }}",
-      "rowcount": {{ .Rowcount }},
+      "rowcount": "{{ .Rowcount }}",
       "include_headers": {{ .Headers }}
     },
     "cache": {
-      "statement": ""
     },
     "fields": [
-      { "name": "id", "type": "iterator" }
+      { "name": "placeholder", "type": "placeholder" }
     ]
   }]
 }`
@@ -75,30 +72,23 @@ func GenerateConfigFile(config GenerateConfig) error {
 		fileName += ".json"
 	}
 
-	// Create the file
 	f, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	// Parse the template
 	tmpl, err := template.New("GenerateTemplate").Parse(GenerateTemplate)
 	if err != nil {
 		println("Error parsing template:", err)
 		return err
 	}
 
-	// Execute the template
 	err = tmpl.Execute(f, config)
 	if err != nil {
 		println("Error executing template:", err)
 		return err
 	}
-
-	// Read the generated file content for debugging
-	content, _ := os.ReadFile(fileName)
-	fmt.Printf("Generated content:\n%s\n", string(content))
 
 	return nil
 }
