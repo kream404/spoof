@@ -39,34 +39,34 @@ var rootCmd = &cobra.Command{
 		scaffold, _ := cmd.Flags().GetBool("scaffold")
 		generate, _ := cmd.Flags().GetBool("generate")
 
-			if generate {
-		    var genArgs []string
-		    reader := bufio.NewReader(os.Stdin)
+		if generate {
+	    var genArgs []string
+	    reader := bufio.NewReader(os.Stdin)
 
-		    println("generating new config file..")
-				fmt.Println("========================================")
+	    println("generating new config file..")
+			fmt.Println("========================================")
 
-				print("name of config file: ")
-		    output_name, _ := reader.ReadString('\n')
-		    genArgs = append(genArgs, strings.TrimSpace(output_name))
+			print("name of config file: ")
+	    output_name, _ := reader.ReadString('\n')
+	    genArgs = append(genArgs, strings.TrimSpace(output_name))
 
-		    print("name of output file: ")
-		    file_name, _ := reader.ReadString('\n')
-		    genArgs = append(genArgs, strings.TrimSpace(file_name))
+	    print("name of output file: ")
+	    file_name, _ := reader.ReadString('\n')
+	    genArgs = append(genArgs, strings.TrimSpace(file_name))
 
-		    print("delimiter: ")
-		    delimiter, _ := reader.ReadString('\n')
-		    genArgs = append(genArgs, strings.TrimSpace(delimiter))
+	    print("delimiter: ")
+	    delimiter, _ := reader.ReadString('\n')
+	    genArgs = append(genArgs, strings.TrimSpace(delimiter))
 
-		    print("row count: ")
-		    rowcount, _ := reader.ReadString('\n')
-		    genArgs = append(genArgs, strings.TrimSpace(rowcount))
+	    print("row count: ")
+	    rowcount, _ := reader.ReadString('\n')
+	    genArgs = append(genArgs, strings.TrimSpace(rowcount))
 
-		    print("include headers [Y/n]: ")
-		    headers, _ := reader.ReadString('\n')
-		    genArgs = append(genArgs, strings.TrimSpace(headers))
+	    print("include headers [Y/n]: ")
+	    headers, _ := reader.ReadString('\n')
+	    genArgs = append(genArgs, strings.TrimSpace(headers))
 
-		    generateCmd.Run(cmd, genArgs)
+	    generateCmd.Run(cmd, genArgs)
 		}
 
 
