@@ -5,6 +5,7 @@ type Config struct {
 	Delimiter      string `json:"delimiter"`
 	RowCount       int    `json:"rowcount,string"`
 	IncludeHeaders bool   `json:"include_headers"`
+	Seed				string	`json:"seed,omitempty"`
 }
 
 type Profiles struct {
@@ -25,7 +26,6 @@ type CacheConfig struct {
 	Password    string  `json:"password"`
 	Name	    	string  `json:"name"`
 	Statement   string	`json:"statement"`
-	Seed				string	`json:"seed,omitempty"`
 }
 
 type Field struct {
@@ -58,13 +58,8 @@ func (c CacheConfig) HasCache() bool {
 	return c != CacheConfig{}
 }
 
-func (c CacheConfig) HasSeed() bool {
-	return c.Seed != "";
-}
-
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
-  merged.Seed = c.Seed //TODO: these must be provided in config file so must be overriden, could probably refactor the merge func cause this is kinda ugly
 	merged.Statement = c.Statement
 
 	if merged.Hostname == "" {

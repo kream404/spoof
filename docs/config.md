@@ -19,14 +19,23 @@ Here is an example of the `cache` section:
   "username": "user",
   "password": "password",
   "name": "database",
-  "seed": "4d810b2c-f1ca-46dc-9240-b7b19f1fc46e",
   "statement": "SELECT customerid, amount, customer_email FROM account.customer;"
 }
 ```
 
 ### Seed
 
-The cache config can optionally be provisioned with a seed. This will be the seed used for all RNG operations in the generation, giving deterministic results.
+The file config can optionally be provisioned with a seed. This will be the seed used for all RNG operations in the generation, giving deterministic results.
+
+```json
+"config": {
+  "file_name": "testfile.csv",
+  "delimiter": "|",
+  "rowcount": "6",
+  "include_headers": true,
+  "seed": "47e7f672-9c3d-4dd4-a151-6f5fd67f236f"
+},
+```
 
 Any run without a seed will output the seed used in generation to the console, which can be used to replicate outputs.
 

@@ -4,10 +4,10 @@
         "file_name": "testfile.csv",
         "delimiter": "|",
         "rowcount": "5",
-        "include_headers": true
+        "include_headers": true,
+        "seed":"4d810b2c-f1ca-46dc-9240-b7b19f1fc46e"
       },
       "cache":{
-        "seed":"4d810b2c-f1ca-46dc-9240-b7b19f1fc46e",
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [
