@@ -58,10 +58,6 @@ func (c CacheConfig) HasCache() bool {
 	return c != CacheConfig{}
 }
 
-func (c Config) HasSeed() bool {
-	return c.Seed != "";
-}
-
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
 	merged.Statement = c.Statement
