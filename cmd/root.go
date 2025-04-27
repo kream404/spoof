@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-ini/ini"
@@ -23,6 +25,7 @@ var (
 	profile        string
 	versionFlag    bool
 	verbose        bool
+	generate			 bool
 )
 
 var rootCmd = &cobra.Command{
@@ -34,6 +37,42 @@ var rootCmd = &cobra.Command{
 		version, _ := cmd.Flags().GetBool("version")
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		scaffold, _ := cmd.Flags().GetBool("scaffold")
+		generate, _ := cmd.Flags().GetBool("generate")
+
+			if generate {
+		    var genArgs []string
+		    reader := bufio.NewReader(os.Stdin)
+
+		    println("generating new config file.")
+
+				print("name of config file: ")
+		    output_name, _ := reader.ReadString('\n')
+		    genArgs = append(genArgs, strings.TrimSpace(output_name))
+		    println("config file in:", output_name)
+
+		    print("filename: ")
+		    file_name, _ := reader.ReadString('\n')
+		    genArgs = append(genArgs, strings.TrimSpace(file_name))
+		    println("filename in:", file_name)
+
+		    print("delimiter: ")
+		    delimiter, _ := reader.ReadString('\n')
+		    genArgs = append(genArgs, strings.TrimSpace(delimiter))
+		    println("delimiter in:", delimiter)
+
+		    print("rowcount: ")
+		    rowcount, _ := reader.ReadString('\n')
+		    genArgs = append(genArgs, strings.TrimSpace(rowcount))
+		    println("rowcount in:", rowcount)
+
+		    print("include headers [Y/n]: ")
+		    headers, _ := reader.ReadString('\n')
+		    genArgs = append(genArgs, strings.TrimSpace(headers))
+		    println("headers in:", headers)
+
+		    fmt.Println("genArgs:", genArgs)
+		    generateCmd.Run(cmd, genArgs)
+		}
 
 
 		if version {
@@ -102,6 +141,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "v", false, "show cli version")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
+	rootCmd.Flags().BoolVarP(&generate, "generate", "g", false, "generate a new config file")
 	rootCmd.Flags().StringVarP(&config_path, "config", "c", "", "path to config file")
 	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "db connection profile")
 	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
