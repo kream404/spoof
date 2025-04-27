@@ -34,6 +34,7 @@ spoof [flags]
 | `--verbose`               | `-V`      | Output detailed logs and execution time.            |
 | `--config <path>`         | `-c`      | Path to JSON configuration file.                    |
 | `--profile <name>`        | `-p`      | Name of DB connection profile (overrides config).   |
+| `--generate`               | `-g`      | Generate a new config file.                                   |
 
 ---
 
