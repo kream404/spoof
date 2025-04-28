@@ -28,7 +28,7 @@ var generateCmd = &cobra.Command{
 
 		rowcount, err := strconv.Atoi(args[3])
 		if err != nil {
-			println("invalid rowcount: ", err)
+			println("invalid rowcount")
 			os.Exit(1)
 		}
 
@@ -90,5 +90,9 @@ func GenerateConfigFile(config GenerateConfig) error {
 		return err
 	}
 
+	filepath, _ := os.Getwd();
+	println("========================================")
+	println("config file generated: ", filepath + "/" + fileName)
+	println("========================================")
 	return nil
 }
