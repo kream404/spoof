@@ -159,7 +159,8 @@ func loadConfig() error {
 			cacheProfile.Password = string(input)
 		}
 
-		config.Files[0].CacheConfig = config.Files[0].CacheConfig.MergeConfig(cacheProfile)
+		merged := config.Files[0].CacheConfig.MergeConfig(cacheProfile)
+		config.Files[0].CacheConfig = &merged
 	}
 
 	return nil
