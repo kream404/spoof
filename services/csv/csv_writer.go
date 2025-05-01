@@ -42,7 +42,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		if file.CacheConfig.HasCache() {
+		if file.CacheConfig != nil {
 			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 			if err != nil {
 				println("failed to load cache: ", fmt.Sprint(err))
