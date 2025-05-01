@@ -71,23 +71,26 @@ func DetectDelimiter(line string) rune {
 	return ','
 }
 
-func DetectType(value string) (string, string, error) { //returns value, format, err
+func DetectType(value string) (string, string, error) {
 	v := strings.TrimSpace(value)
 
-	switch {
-	case isUUID(v):
+	if isUUID(v) {
 		return "uuid", "", nil
-	case isInteger(v):
-		return "number", "", nil
-	case isFloat(v):
-		return "number", "", nil
-	case isTimestamp(v):
-		return "timestamp", "02-01-06 15:04:05", nil
-	case isEmail(v):
-		return "email", "", nil
-	default:
-		return "unknown", "", nil
 	}
+	if isInteger(v) {
+		return "number", "", nil
+	}
+	if isFloat(v) {
+		return "number", "", nil
+	}
+	if ok, layout := isTimestamp(v); ok {
+		println("layout: ", layout)
+		return "timestamp", layout, nil
+	}
+	if isEmail(v) {
+		return "email", "", nil
+	}
+	return "unknown", "", nil
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
@@ -106,7 +109,7 @@ func isFloat(s string) bool {
 	return err == nil
 }
 
-func isTimestamp(s string) bool {
+func isTimestamp(s string) (bool, string) {
 	formats := []string{
 		"2006-01-02 15:04:05",
 		"02-01-06 15:04:05",
@@ -115,10 +118,10 @@ func isTimestamp(s string) bool {
 	}
 	for _, layout := range formats {
 		if _, err := time.Parse(layout, s); err == nil {
-			return true
+			return true, layout
 		}
 	}
-	return false
+	return false, ""
 }
 
 func isEmail(s string) bool {

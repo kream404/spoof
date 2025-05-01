@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,14 +17,12 @@ var extractCmd = &cobra.Command{
 	Long: `extract a new config file`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := ExtractConfigFile(args[0])
-		// println("config extracted: ", json (config))
 		if err != nil {
 			println("failed to extract config: ", err.Error())
 		}
 
 		directory, _ := os.Getwd()
 		path := filepath.Join(directory, strings.TrimSuffix(config.Files[0].Config.FileName, ".csv")+".json")
-		println("path: ", path)
 		err = WriteConfigToFile(config, path)
 		if err != nil {
 			println("failed to write file: ", err.Error())
@@ -42,7 +39,6 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 	delimiter := csv.DetectDelimiter(records[0][0])
 	fields, _ := csv.MapFields(records)
 
-	println("extracted name: ", file.Name())
 	config := models.Config{
 		FileName:       filepath.Base(file.Name()),
 		Delimiter:      string(delimiter),
@@ -50,10 +46,9 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 		IncludeHeaders: false,
 	}
 
-	println(fmt.Sprintln(fields))
 	entity := models.Entity{
 		Config:      config,
-		CacheConfig: nil, // <-- explicitly nil to omit from JSON
+		CacheConfig: nil,
 		Fields:      fields,
 	}
 
