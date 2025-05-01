@@ -12,10 +12,10 @@ import (
 	"github.com/kream404/spoof/models"
 )
 
-func ReadCSV(filepath string) ([][]string, *os.File, error) {
+func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	defer file.Close()
 
@@ -24,23 +24,24 @@ func ReadCSV(filepath string) ([][]string, *os.File, error) {
 	if scanner.Scan() {
 		firstLine = scanner.Text()
 	} else if err := scanner.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	delimiter := DetectDelimiter(firstLine)
 
 	_, err = file.Seek(0, 0)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	reader := csv.NewReader(file)
 	reader.Comma = delimiter
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
+
 	}
-	return records, file, nil
+	return records, file, delimiter, nil
 }
 
 func MapFields(records [][]string) ([]models.Field, error) {
@@ -65,7 +66,9 @@ func MapFields(records [][]string) ([]models.Field, error) {
 }
 
 func DetectDelimiter(line string) rune {
+	println(line)
 	if strings.Contains(line, "|") {
+		println("detected pipe")
 		return '|'
 	}
 	return ','

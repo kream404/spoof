@@ -31,12 +31,12 @@ var extractCmd = &cobra.Command{
 }
 
 func ExtractConfigFile(path string) (*models.FileConfig, error) {
-	records, file, err := csv.ReadCSV(path)
+	records, file, delimiter, err := csv.ReadCSV(path)
 	if err != nil {
 		return nil, err
 	}
 
-	delimiter := csv.DetectDelimiter(records[0][0])
+	println("delim: ", string(delimiter))
 	fields, _ := csv.MapFields(records)
 
 	config := models.Config{
