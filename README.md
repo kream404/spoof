@@ -35,7 +35,7 @@ spoof [flags]
 | `--config <path>`         | `-c`      | Path to JSON configuration file.                    |
 | `--profile <name>`        | `-p`      | Name of DB connection profile (overrides config).   |
 | `--generate`               | `-g`      | Generate a new config file.                                   |
-| `--extract`               | `-e`      | Extract a config file from a csv                                   |
+| `--extract <path>`               | `-e`      | Extract a config file from a csv                                   |
 
 ---
 
@@ -57,7 +57,7 @@ spoof --config ./configs/sample.json
 
 You can also generate a config file from a CSV. The type inference is not perfect and may take some additional tweaking after generation, but it should be a good starting point. This is a work in progres.
 
-If the target CSV file does not have headers, you **must** annotate the CSV with headers. These headers will be the `name` of the `field` in the generated config file. This will output the generated file in your current working directory
+> If the target CSV file does not have headers, you **must** annotate the CSV with headers. These headers will be the `name` of the `field` in the generated config file. This will output the generated file in your current working directory
 
 ```bash
 spoof --extract ./path/to/csvfile.csv
