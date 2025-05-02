@@ -68,7 +68,7 @@ func runVersion(cmd *cobra.Command, args []string) {
 }
 
 func runExtract(cmd *cobra.Command, path string) {
-	fmt.Println("extract called")
+	fmt.Println("extracting config from file: ", path)
 	extractCmd.Run(cmd, []string{path})
 }
 

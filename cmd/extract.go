@@ -36,9 +36,7 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 		return nil, err
 	}
 
-	println("delim: ", string(delimiter))
 	fields, _ := csv.MapFields(records)
-
 	config := models.Config{
 		FileName:       filepath.Base(file.Name()),
 		Delimiter:      string(delimiter),
@@ -65,5 +63,6 @@ func WriteConfigToFile(config *models.FileConfig, outputPath string) error {
 		println(err)
 		return err
 	}
+	println("created new config file: ", outputPath)
 	return os.WriteFile(outputPath, data, 0644)
 }

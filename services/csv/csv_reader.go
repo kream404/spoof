@@ -39,7 +39,6 @@ func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
 	records, err := reader.ReadAll()
 	if err != nil {
 		return nil, nil, 0, err
-
 	}
 	return records, file, delimiter, nil
 }
@@ -53,47 +52,50 @@ func MapFields(records [][]string) ([]models.Field, error) {
 	}
 
 	headers := records[0]
-	data := records[1]
 	for index, header := range headers {
-		field_type, format, err := DetectType(data[index])
+		var col []string
+		for rowIndex := 1; rowIndex < len(records); rowIndex++ {
+			col = append(col, records[rowIndex][index])
+		}
+
+		field_type, format, values, err := DetectType(col)
 		if err != nil {
 			println(err)
 		}
-		fields = append(fields, models.Field{Name: header, Format: format, Type: field_type})
+		fields = append(fields, models.Field{Name: header, Format: format, Type: field_type, Values: strings.Join(values, ", ")})
 	}
-
 	return fields, nil
 }
 
 func DetectDelimiter(line string) rune {
-	println(line)
 	if strings.Contains(line, "|") {
-		println("detected pipe")
 		return '|'
 	}
 	return ','
 }
 
-func DetectType(value string) (string, string, error) {
-	v := strings.TrimSpace(value)
-
+func DetectType(col []string) (string, string, []string, error) {
+	v := strings.TrimSpace(col[0])
 	if isUUID(v) {
-		return "uuid", "", nil
+		return "uuid", "", nil, nil
 	}
-	if isInteger(v) {
-		return "number", "", nil
-	}
-	if isFloat(v) {
-		return "number", "", nil
-	}
+
 	if ok, layout := isTimestamp(v); ok {
-		println("layout: ", layout)
-		return "timestamp", layout, nil
+		return "timestamp", layout, nil, nil
 	}
 	if isEmail(v) {
-		return "email", "", nil
+		return "email", "", nil, nil
 	}
-	return "unknown", "", nil
+	if isIterator(col) { //check for iterator first - need to do something similar for range, return the array of values too
+		return "iterator", "", nil, nil
+	}
+	if ok, set := isRange(col); ok {
+		return "range", "", set, nil
+	}
+	if isFloat(v) {
+		return "number", "", nil, nil
+	}
+	return "unknown", "", nil, nil
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
@@ -129,4 +131,40 @@ func isTimestamp(s string) (bool, string) {
 
 func isEmail(s string) bool {
 	return strings.Contains(s, "@") && strings.Contains(s, ".")
+}
+
+// check if header contains id ??
+func isIterator(col []string) bool {
+	for i := 1; i < len(col); i++ {
+		prev, errPrev := strconv.Atoi(col[i-1])
+		curr, errCurr := strconv.Atoi(col[i])
+		if errPrev != nil || errCurr != nil || curr-prev != 1 {
+			return false
+		}
+	}
+	return true
+}
+
+func isRange(col []string) (bool, []string) {
+	var unique []string
+	set := make(map[string]struct{})
+	for _, v := range col {
+		v = strings.TrimSpace(v)
+
+		if strings.Contains(v, ".") {
+			return false, []string{}
+		}
+
+		if isInteger(v) || len(v) > 0 {
+			set[v] = struct{}{}
+		} else {
+			return false, []string{}
+		}
+
+		unique = make([]string, 0, len(set))
+		for v := range set {
+			unique = append(unique, v)
+		}
+	}
+	return true, unique
 }
