@@ -42,10 +42,10 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		if file.CacheConfig.HasCache(){
-			cache, err = database.NewDBConnector().LoadCache(file.CacheConfig)
+		if file.CacheConfig != nil {
+			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 			if err != nil {
-				println(fmt.Sprint(err))
+				println("failed to load cache: ", fmt.Sprint(err))
 				os.Exit(1) //if we provide a cache, and cant populate it throw an error
 			}
 		}
@@ -56,7 +56,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		s.Start()
 
 		// rng := rand.New(rand.NewSource(42))
-		rng := CreateRNGSeed(file.Config.Seed);
+		rng := CreateRNGSeed(file.Config.Seed)
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
@@ -109,48 +109,48 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 		var key string
 
 		switch {
-			case field.Type == "" && field.Value != "":
-				value = field.Value
+		case field.Type == "" && field.Value != "":
+			value = field.Value
 
-			case field.SeedType == "db":
-				if field.Alias != "" {
-					key = field.Alias
+		case field.SeedType == "db":
+			if field.Alias != "" {
+				key = field.Alias
+			} else {
+				key = field.Name
+			}
+			value = seed[seedIndex][key]
+
+		case field.Type == "reflection": //TODO: I dont like this, this could get out of hand quickly. not sure where this should live
+			targetValue, ok := generatedFields[field.Target]
+			if !ok {
+				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+			}
+
+			value = targetValue
+			if field.Modifier != nil {
+				if parsed, err := strconv.ParseFloat(targetValue, 64); err == nil {
+					value = parsed * *field.Modifier
 				} else {
-					key = field.Name
+					fmt.Printf("modifier ignored: '%s' is not a numeric string\n", targetValue)
 				}
-				value = seed[seedIndex][key]
+			}
 
-			case field.Type == "reflection": //TODO: I dont like this, this could get out of hand quickly. not sure where this should live
-				targetValue, ok := generatedFields[field.Target]
-				if !ok {
-					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
-				}
+		case field.Type == "iterator":
+			value = rowIndex
 
-				value = targetValue
-				if field.Modifier != nil {
-					if parsed, err := strconv.ParseFloat(targetValue, 64); err == nil {
-						value = parsed * *field.Modifier
-					} else {
-						fmt.Printf("modifier ignored: '%s' is not a numeric string\n", targetValue)
-					}
-				}
-
-			case field.Type == "iterator":
-				value = rowIndex
-
-			default:
-				factory, found := fakers.GetFakerByName(field.Type)
-				if !found {
-					return nil, fmt.Errorf("faker not found for type: %s", field.Type)
-				}
-				faker, err := factory(field, rng)
-				if err != nil {
-					return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
-				}
-				value, err = faker.Generate()
-				if err != nil {
-					return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
-				}
+		default:
+			factory, found := fakers.GetFakerByName(field.Type)
+			if !found {
+				return nil, fmt.Errorf("faker not found for type: %s", field.Type)
+			}
+			faker, err := factory(field, rng)
+			if err != nil {
+				return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
+			}
+			value, err = faker.Generate()
+			if err != nil {
+				return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+			}
 		}
 
 		valueStr := fmt.Sprint(value)
@@ -159,7 +159,6 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 	}
 	return record, nil
 }
-
 
 func stringToSeed(s string) int64 {
 	h := fnv.New64a()
@@ -172,11 +171,11 @@ func CreateRNGSeed(seed_in string) *rand.Rand {
 	var seed int64
 	if seed_in != "" {
 		s = seed_in
-	}else{
+	} else {
 		s = uuid.NewString()
 	}
 
-	println("seed: ", s);
+	println("seed: ", s)
 	fmt.Println("========================================")
 
 	seed = stringToSeed(s)
