@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kream404/spoof/models"
+	log "github.com/kream404/spoof/services/logger"
 )
 
 func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
@@ -43,28 +44,34 @@ func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
 	return records, file, delimiter, nil
 }
 
-func MapFields(records [][]string) ([]models.Field, error) {
-
+func MapFields(records [][]string) ([]models.Field, []string, error) {
+	log.Debug("Mapping fields")
 	var fields []models.Field
+	var types []string
 
 	if len(records) == 0 {
-		return fields, nil
+		log.Error("No records in csv")
+		return fields, nil, nil
 	}
 
 	headers := records[0]
+	log.Debug("Headers in CSV", "headers", headers)
 	for index, header := range headers {
 		var col []string
 		for rowIndex := 1; rowIndex < len(records); rowIndex++ {
 			col = append(col, records[rowIndex][index])
 		}
 
+		log.Debug("Detecting type for column", "col", header)
 		field_type, format, values, err := DetectType(col)
 		if err != nil {
 			println(err)
 		}
+
+		types = append(types, field_type)
 		fields = append(fields, models.Field{Name: header, Format: format, Type: field_type, Values: strings.Join(values, ", ")})
 	}
-	return fields, nil
+	return fields, types, nil
 }
 
 func DetectDelimiter(line string) rune {
@@ -74,6 +81,7 @@ func DetectDelimiter(line string) rune {
 	return ','
 }
 
+// TODO: this should return in the type enum, not string
 func DetectType(col []string) (string, string, []string, error) {
 	v := strings.TrimSpace(col[0])
 	if isUUID(v) {

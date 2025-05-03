@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/json"
+	log "github.com/kream404/spoof/services/logger"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
@@ -37,23 +39,34 @@ var rootCmd = &cobra.Command{
 			runVersion(cmd, args)
 			return
 		}
+		if verbose {
+			log.Init(slog.LevelDebug)
+		} else {
+			log.Init(slog.LevelInfo)
+		}
 
 		if extract_path != "" {
+			log.Info("Extracting config file", "path", extract_path)
 			runExtract(cmd, extract_path)
 			return
 		}
 
 		if generate {
+			log.Info("============================================")
+			log.Info("Generating new config file")
+			log.Info("============================================")
+
 			runGenerate(cmd)
 			return
 		}
 
 		if err := loadConfig(); err != nil {
-			fmt.Println("failed to load config:", err)
+			log.Error("Failed to load config file ", "error", err.Error())
 			os.Exit(1)
 		}
 
 		if config != nil {
+			log.Info("Generating csv")
 			runVerboseCSV()
 		}
 
@@ -68,17 +81,12 @@ func runVersion(cmd *cobra.Command, args []string) {
 }
 
 func runExtract(cmd *cobra.Command, path string) {
-	fmt.Println("extracting config from file: ", path)
 	extractCmd.Run(cmd, []string{path})
 }
 
 func runGenerate(cmd *cobra.Command) {
 	reader := bufio.NewReader(os.Stdin)
 	var genArgs []string
-
-	fmt.Println("generating new config file..")
-	fmt.Println("========================================")
-
 	fmt.Print("name of config file: ")
 	outputName, _ := reader.ReadString('\n')
 	genArgs = append(genArgs, strings.TrimSpace(outputName))
@@ -104,11 +112,9 @@ func runGenerate(cmd *cobra.Command) {
 
 func runVerboseCSV() {
 	start := time.Now()
-	fmt.Println("config path:", config_path)
-	fmt.Println("========================================")
 	csv.GenerateCSV(*config, "./output/output.csv")
 	elapsed := time.Since(start)
-	fmt.Printf("\n⏱️  Done in %s\n", elapsed)
+	log.Info("⏱️  Done in ", "time", elapsed)
 }
 
 func runScaffold() {
@@ -124,14 +130,11 @@ func runScaffold() {
 }
 
 func loadConfig() error {
-	if config_path == "" {
-		return fmt.Errorf("--config path is required")
-	}
-
 	var err error
 	config, err = json.LoadConfig(config_path)
 	if err != nil {
-		return err
+		log.Error("Failed to load config	", "path", config_path)
+		os.Exit(1)
 	}
 
 	if profile != "" {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/template"
 
+	log "github.com/kream404/spoof/services/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -18,17 +19,18 @@ type GenerateConfig struct {
 }
 
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Long:  `generate a new config file`,
+	Use:  "generate",
+	Long: `generate a new config file`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fileName := strings.ToLower(args[1])
+		log.Debug("Generaating new config file ", "filename", fileName)
 		if !strings.HasSuffix(fileName, ".csv") {
 			fileName += ".csv"
 		}
 
 		rowcount, err := strconv.Atoi(args[3])
 		if err != nil {
-			println("invalid rowcount")
+			log.Error("Invalid row count ", "error", err)
 			os.Exit(1)
 		}
 
@@ -90,9 +92,9 @@ func GenerateConfigFile(config GenerateConfig) error {
 		return err
 	}
 
-	filepath, _ := os.Getwd();
-	println("========================================")
-	println("config file generated: ", filepath + "/" + fileName)
-	println("========================================")
+	filepath, _ := os.Getwd()
+	log.Info("========================================")
+	log.Info("Config file generated ", "file", filepath+"/"+fileName)
+	log.Info("========================================")
 	return nil
 }
