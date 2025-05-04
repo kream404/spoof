@@ -67,7 +67,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if config != nil {
-			log.Info("Generating csv")
+			log.Info("Generating CSV...")
 			runVerboseCSV()
 		}
 
@@ -112,10 +112,7 @@ func runGenerate(cmd *cobra.Command) {
 }
 
 func runVerboseCSV() {
-	start := time.Now()
 	csv.GenerateCSV(*config, "./output/output.csv")
-	elapsed := time.Since(start)
-	log.Info("⏱️  Done in ", "time", elapsed)
 }
 
 func runScaffold() {
@@ -187,8 +184,11 @@ func init() {
 }
 
 func Execute() {
+	start := time.Now()
 	if err := rootCmd.Execute(); err != nil {
 		log.Error("Uncaught error ", "error", err.Error())
 		os.Exit(1)
 	}
+	elapsed := time.Since(start)
+	log.Info("⏱️  Done in ", "time", elapsed)
 }

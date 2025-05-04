@@ -1,7 +1,7 @@
 package fakers
 
 import (
-	"math"
+	"fmt"
 	"math/rand"
 	"strconv"
 
@@ -12,20 +12,16 @@ import (
 type NumberFaker struct {
 	datatype models.Type
 	format   string
-	min 		 float64
-	max 		 float64
-	rng 		 *rand.Rand
+	min      float64
+	max      float64
+	rng      *rand.Rand
 }
 
 func (f *NumberFaker) Generate() (any, error) {
 	rawValue := f.min + f.rng.Float64()*(f.max-f.min)
-	decimals, _ := strconv.Atoi(f.format);
-	return roundToDecimal(rawValue, decimals), nil
-}
-
-func roundToDecimal(value float64, places int) float64 {
-	factor := math.Pow(10, float64(places))
-	return math.Round(value*factor) / factor
+	decimals, _ := strconv.Atoi(f.format)
+	format := fmt.Sprintf("%%.%df", decimals)
+	return fmt.Sprintf(format, rawValue), nil
 }
 
 func (f *NumberFaker) GetType() models.Type {
@@ -40,9 +36,9 @@ func NewNumberFaker(format string, min float64, max float64, rng *rand.Rand) *Nu
 	return &NumberFaker{
 		datatype: models.Type("Number"),
 		format:   format,
-		min: min,
-		max: max,
-		rng: rng,
+		min:      min,
+		max:      max,
+		rng:      rng,
 	}
 }
 

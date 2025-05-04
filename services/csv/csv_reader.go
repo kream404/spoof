@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,7 +14,9 @@ import (
 	log "github.com/kream404/spoof/services/logger"
 )
 
+// returns records from csv, file, delim, easier to do all this on read
 func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, nil, 0, err
@@ -97,7 +100,7 @@ func DetectType(col []string) (string, string, []string, error) {
 	if isIterator(col) { //check for iterator first - need to do something similar for range, return the array of values too
 		return "iterator", "", nil, nil
 	}
-	if ok, set := isRange(col); ok {
+	if ok, set := isRange(col, 10); ok {
 		return "range", "", set, nil
 	}
 	if isFloat(v) {
@@ -141,7 +144,6 @@ func isEmail(s string) bool {
 	return strings.Contains(s, "@") && strings.Contains(s, ".")
 }
 
-// check if header contains id ??
 func isIterator(col []string) bool {
 	for i := 1; i < len(col); i++ {
 		prev, errPrev := strconv.Atoi(col[i-1])
@@ -153,26 +155,24 @@ func isIterator(col []string) bool {
 	return true
 }
 
-func isRange(col []string) (bool, []string) {
-	var unique []string
+func isRange(col []string, maxDistinct int) (bool, []string) {
 	set := make(map[string]struct{})
+
 	for _, v := range col {
 		v = strings.TrimSpace(v)
-
-		if strings.Contains(v, ".") {
-			return false, []string{}
+		if v == "" {
+			continue
 		}
-
-		if isInteger(v) || len(v) > 0 {
-			set[v] = struct{}{}
-		} else {
-			return false, []string{}
-		}
-
-		unique = make([]string, 0, len(set))
-		for v := range set {
-			unique = append(unique, v)
+		set[v] = struct{}{}
+		if len(set) > maxDistinct { //now tracking distinct values to not misclassify numbers as is range, it was getting out of hand
+			return false, nil
 		}
 	}
+
+	unique := make([]string, 0, len(set))
+	for v := range set {
+		unique = append(unique, v)
+	}
+	sort.Strings(unique)
 	return true, unique
 }
