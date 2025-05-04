@@ -66,13 +66,13 @@ func MapFields(records [][]string) ([]models.Field, []string, error) {
 		}
 
 		log.Debug("Detecting type for column", "col", header)
-		field_type, format, values, err := DetectType(col)
+		field, err := DetectType(col, header) //this returns a field with all the config, could rename
 		if err != nil {
 			log.Error("Failed to detect type ", "error", err.Error())
 		}
 
-		types = append(types, field_type)
-		fields = append(fields, models.Field{Name: header, Format: format, Type: field_type, Values: strings.Join(values, ", ")})
+		types = append(types, field.Type)
+		fields = append(fields, field) //TODO: detect type should return the field. can do type specific config better
 	}
 	return fields, types, nil
 }
@@ -84,29 +84,30 @@ func DetectDelimiter(line string) rune {
 	return ','
 }
 
-// TODO: this should return in the type enum, not string
-func DetectType(col []string) (string, string, []string, error) {
+func DetectType(col []string, header string) (models.Field, error) {
 	v := strings.TrimSpace(col[0])
 	if isUUID(v) {
-		return "uuid", "", nil, nil
+		return models.Field{Name: header, Type: "uuid"}, nil
 	}
 
 	if ok, layout := isTimestamp(v); ok {
-		return "timestamp", layout, nil, nil
+		return models.Field{Name: header, Type: "timestap", Format: layout}, nil
 	}
 	if isEmail(v) {
-		return "email", "", nil, nil
+		return models.Field{Name: header, Type: "email"}, nil
 	}
-	if isIterator(col) { //check for iterator first - need to do something similar for range, return the array of values too
-		return "iterator", "", nil, nil
+	if isIterator(col) {
+		return models.Field{Name: header, Type: "iterator"}, nil
 	}
 	if ok, set := isRange(col, 10); ok {
-		return "range", "", set, nil
+		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
 	if isFloat(v) {
-		return "number", "", nil, nil
+		return models.Field{Name: header, Type: "number", Min: -100, Max: 5000}, nil //TODO: detect decimal places and set
+
 	}
-	return "unknown", "", nil, nil
+	return models.Field{Name: header, Type: "unknown"}, nil
+
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
