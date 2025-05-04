@@ -39,6 +39,7 @@ var rootCmd = &cobra.Command{
 			runVersion(cmd, args)
 			return
 		}
+
 		if verbose {
 			log.Init(slog.LevelDebug)
 		} else {
@@ -138,8 +139,7 @@ func loadConfig() error {
 	}
 
 	if profile != "" {
-		fmt.Println("========================================")
-		fmt.Println("loading connection profile:", profile)
+		log.Info("Loading connection profile:", "profile", profile)
 		home, _ := os.UserHomeDir()
 		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
 		cfg, err := ini.Load(profilePath)
@@ -148,6 +148,7 @@ func loadConfig() error {
 		}
 
 		section := cfg.Section(profile)
+
 		cacheProfile := models.CacheConfig{
 			Hostname: section.Key("hostname").String(),
 			Port:     section.Key("port").String(),
@@ -155,6 +156,11 @@ func loadConfig() error {
 			Password: section.Key("password").String(),
 			Name:     section.Key("name").String(),
 		}
+		if cacheProfile.Hostname == "" {
+			log.Error("Failed to load connection profile", "err", "profile not found")
+			os.Exit(1)
+		}
+		log.Debug("Profile loaded", "profile", fmt.Sprintln(cacheProfile))
 
 		if cacheProfile.Password == "" {
 			fmt.Print("enter db password: ")
@@ -182,7 +188,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Error("Uncaught error ", "error", err.Error())
 		os.Exit(1)
 	}
 }

@@ -68,7 +68,7 @@ func WriteConfigToFile(config *models.FileConfig, path string) error {
 
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		println(err)
+		log.Error("Error writing config file", "error", err.Error())
 		return err
 	}
 	log.Info("Created new config file	", "path", path)

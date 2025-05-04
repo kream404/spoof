@@ -65,7 +65,7 @@ func MapFields(records [][]string) ([]models.Field, []string, error) {
 		log.Debug("Detecting type for column", "col", header)
 		field_type, format, values, err := DetectType(col)
 		if err != nil {
-			println(err)
+			log.Error("Failed to detect type ", "error", err.Error())
 		}
 
 		types = append(types, field_type)

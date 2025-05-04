@@ -39,7 +39,7 @@ func LoadProfiles(filepath string) (*models.Profiles, error) {
 		return nil, err
 	}
 
-	println(ToJSONString(profiles))
+	log.Debug("Profile loaded ", "profile", profiles)
 	return &profiles, nil
 }
 

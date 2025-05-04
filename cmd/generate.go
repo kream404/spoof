@@ -82,13 +82,13 @@ func GenerateConfigFile(config GenerateConfig) error {
 
 	tmpl, err := template.New("GenerateTemplate").Parse(GenerateTemplate)
 	if err != nil {
-		println("Error parsing template:", err)
+		log.Error("Error parsing template:", "error", err.Error())
 		return err
 	}
 
 	err = tmpl.Execute(f, config)
 	if err != nil {
-		println("Error executing template:", err)
+		log.Error("Error executing template:", "error", err.Error())
 		return err
 	}
 
