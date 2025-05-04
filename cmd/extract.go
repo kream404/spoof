@@ -44,8 +44,8 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 	config := models.Config{
 		FileName:       filepath.Base(file.Name()),
 		Delimiter:      string(delimiter),
-		RowCount:       100,
-		IncludeHeaders: false,
+		RowCount:       len(records),
+		IncludeHeaders: true,
 	}
 
 	entity := models.Entity{
