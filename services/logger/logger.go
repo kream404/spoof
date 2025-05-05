@@ -11,19 +11,27 @@ import (
 var logger *slog.Logger
 
 func Debug(msg string, args ...any) {
-	logger.Debug(msg, args...)
+	if logger != nil {
+		logger.Debug(msg, args...)
+	}
 }
 
 func Info(msg string, args ...any) {
-	logger.Info(msg, args...)
+	if logger != nil {
+		logger.Info(msg, args...)
+	}
 }
 
 func Warn(msg string, args ...any) {
-	logger.Warn(msg, args...)
+	if logger != nil {
+		logger.Warn(msg, args...)
+	}
 }
 
 func Error(msg string, args ...any) {
-	logger.Error(msg, args...)
+	if logger != nil {
+		logger.Error(msg, args...)
+	}
 }
 
 func Init(level slog.Level) {
