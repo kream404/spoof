@@ -132,6 +132,8 @@ func isTimestamp(s string) (bool, string) {
 		"02-01-06 15:04:05",
 		"2006-01-02",
 		"02/01/2006",
+		"02-01-06",
+		"15:04:05",
 	}
 	for _, layout := range formats {
 		if _, err := time.Parse(layout, s); err == nil {
