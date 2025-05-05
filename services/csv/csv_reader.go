@@ -5,14 +5,18 @@ import (
 	"encoding/csv"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kream404/spoof/models"
+	log "github.com/kream404/spoof/services/logger"
 )
 
+// returns records from csv, file, delim, easier to do all this on read
 func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, nil, 0, err
@@ -43,28 +47,34 @@ func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
 	return records, file, delimiter, nil
 }
 
-func MapFields(records [][]string) ([]models.Field, error) {
-
+func MapFields(records [][]string) ([]models.Field, []string, error) {
+	log.Debug("Mapping fields")
 	var fields []models.Field
+	var types []string
 
 	if len(records) == 0 {
-		return fields, nil
+		log.Error("No records in csv")
+		return fields, nil, nil
 	}
 
 	headers := records[0]
+	log.Debug("Headers in CSV", "headers", headers)
 	for index, header := range headers {
 		var col []string
 		for rowIndex := 1; rowIndex < len(records); rowIndex++ {
 			col = append(col, records[rowIndex][index])
 		}
 
-		field_type, format, values, err := DetectType(col)
+		log.Debug("Detecting type for column", "col", header)
+		field, err := DetectType(col, header) //this returns a field with all the config, could rename
 		if err != nil {
-			println(err)
+			log.Error("Failed to detect type ", "error", err.Error())
 		}
-		fields = append(fields, models.Field{Name: header, Format: format, Type: field_type, Values: strings.Join(values, ", ")})
+
+		types = append(types, field.Type)
+		fields = append(fields, field) //TODO: detect type should return the field. can do type specific config better
 	}
-	return fields, nil
+	return fields, types, nil
 }
 
 func DetectDelimiter(line string) rune {
@@ -74,28 +84,30 @@ func DetectDelimiter(line string) rune {
 	return ','
 }
 
-func DetectType(col []string) (string, string, []string, error) {
+func DetectType(col []string, header string) (models.Field, error) {
 	v := strings.TrimSpace(col[0])
 	if isUUID(v) {
-		return "uuid", "", nil, nil
+		return models.Field{Name: header, Type: "uuid"}, nil
 	}
 
 	if ok, layout := isTimestamp(v); ok {
-		return "timestamp", layout, nil, nil
+		return models.Field{Name: header, Type: "timestap", Format: layout}, nil
 	}
 	if isEmail(v) {
-		return "email", "", nil, nil
+		return models.Field{Name: header, Type: "email"}, nil
 	}
-	if isIterator(col) { //check for iterator first - need to do something similar for range, return the array of values too
-		return "iterator", "", nil, nil
+	if isIterator(col) {
+		return models.Field{Name: header, Type: "iterator"}, nil
 	}
-	if ok, set := isRange(col); ok {
-		return "range", "", set, nil
+	if ok, set := isRange(col, 10); ok {
+		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
 	if isFloat(v) {
-		return "number", "", nil, nil
+		return models.Field{Name: header, Type: "number", Min: -100, Max: 5000}, nil //TODO: detect decimal places and set
+
 	}
-	return "unknown", "", nil, nil
+	return models.Field{Name: header, Type: "unknown"}, nil
+
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
@@ -133,7 +145,6 @@ func isEmail(s string) bool {
 	return strings.Contains(s, "@") && strings.Contains(s, ".")
 }
 
-// check if header contains id ??
 func isIterator(col []string) bool {
 	for i := 1; i < len(col); i++ {
 		prev, errPrev := strconv.Atoi(col[i-1])
@@ -145,26 +156,24 @@ func isIterator(col []string) bool {
 	return true
 }
 
-func isRange(col []string) (bool, []string) {
-	var unique []string
+func isRange(col []string, maxDistinct int) (bool, []string) {
 	set := make(map[string]struct{})
+
 	for _, v := range col {
 		v = strings.TrimSpace(v)
-
-		if strings.Contains(v, ".") {
-			return false, []string{}
+		if v == "" {
+			continue
 		}
-
-		if isInteger(v) || len(v) > 0 {
-			set[v] = struct{}{}
-		} else {
-			return false, []string{}
-		}
-
-		unique = make([]string, 0, len(set))
-		for v := range set {
-			unique = append(unique, v)
+		set[v] = struct{}{}
+		if len(set) > maxDistinct { //now tracking distinct values to not misclassify numbers as is range, it was getting out of hand
+			return false, nil
 		}
 	}
+
+	unique := make([]string, 0, len(set))
+	for v := range set {
+		unique = append(unique, v)
+	}
+	sort.Strings(unique)
 	return true, unique
 }

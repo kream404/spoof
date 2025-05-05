@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
 	"github.com/kream404/spoof/services/json"
+	log "github.com/kream404/spoof/services/logger"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/spf13/cobra"
@@ -38,22 +40,34 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
+		if verbose {
+			log.Init(slog.LevelDebug)
+		} else {
+			log.Init(slog.LevelInfo)
+		}
+
 		if extract_path != "" {
+			log.Info("Extracting config file", "path", extract_path)
 			runExtract(cmd, extract_path)
 			return
 		}
 
 		if generate {
+			log.Info("============================================")
+			log.Info("Generating new config file")
+			log.Info("============================================")
+
 			runGenerate(cmd)
 			return
 		}
 
 		if err := loadConfig(); err != nil {
-			fmt.Println("failed to load config:", err)
+			log.Error("Failed to load config file ", "error", err.Error())
 			os.Exit(1)
 		}
 
 		if config != nil {
+			log.Info("Generating CSV...")
 			runVerboseCSV()
 		}
 
@@ -68,17 +82,12 @@ func runVersion(cmd *cobra.Command, args []string) {
 }
 
 func runExtract(cmd *cobra.Command, path string) {
-	fmt.Println("extracting config from file: ", path)
 	extractCmd.Run(cmd, []string{path})
 }
 
 func runGenerate(cmd *cobra.Command) {
 	reader := bufio.NewReader(os.Stdin)
 	var genArgs []string
-
-	fmt.Println("generating new config file..")
-	fmt.Println("========================================")
-
 	fmt.Print("name of config file: ")
 	outputName, _ := reader.ReadString('\n')
 	genArgs = append(genArgs, strings.TrimSpace(outputName))
@@ -103,12 +112,7 @@ func runGenerate(cmd *cobra.Command) {
 }
 
 func runVerboseCSV() {
-	start := time.Now()
-	fmt.Println("config path:", config_path)
-	fmt.Println("========================================")
 	csv.GenerateCSV(*config, "./output/output.csv")
-	elapsed := time.Since(start)
-	fmt.Printf("\n⏱️  Done in %s\n", elapsed)
 }
 
 func runScaffold() {
@@ -124,19 +128,15 @@ func runScaffold() {
 }
 
 func loadConfig() error {
-	if config_path == "" {
-		return fmt.Errorf("--config path is required")
-	}
-
 	var err error
 	config, err = json.LoadConfig(config_path)
 	if err != nil {
-		return err
+		log.Error("Failed to load config	", "path", config_path)
+		os.Exit(1)
 	}
 
 	if profile != "" {
-		fmt.Println("========================================")
-		fmt.Println("loading connection profile:", profile)
+		log.Info("Loading connection profile:", "profile", profile)
 		home, _ := os.UserHomeDir()
 		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
 		cfg, err := ini.Load(profilePath)
@@ -145,6 +145,7 @@ func loadConfig() error {
 		}
 
 		section := cfg.Section(profile)
+
 		cacheProfile := models.CacheConfig{
 			Hostname: section.Key("hostname").String(),
 			Port:     section.Key("port").String(),
@@ -152,6 +153,11 @@ func loadConfig() error {
 			Password: section.Key("password").String(),
 			Name:     section.Key("name").String(),
 		}
+		if cacheProfile.Hostname == "" {
+			log.Error("Failed to load connection profile", "err", "profile not found")
+			os.Exit(1)
+		}
+		log.Debug("Profile loaded", "profile", fmt.Sprintln(cacheProfile))
 
 		if cacheProfile.Password == "" {
 			fmt.Print("enter db password: ")
@@ -178,8 +184,11 @@ func init() {
 }
 
 func Execute() {
+	start := time.Now()
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Error("Uncaught error ", "error", err.Error())
 		os.Exit(1)
 	}
+	elapsed := time.Since(start)
+	log.Info("⏱️  Done in ", "time", elapsed)
 }

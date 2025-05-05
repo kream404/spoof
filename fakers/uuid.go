@@ -11,8 +11,8 @@ import (
 
 type UUIDFaker struct {
 	datatype models.Type
-	format string
-	rng *rand.Rand
+	format   string
+	rng      *rand.Rand
 }
 
 func (f *UUIDFaker) Generate() (any, error) {
@@ -20,7 +20,6 @@ func (f *UUIDFaker) Generate() (any, error) {
 	if err != nil {
 		return uuid, fmt.Errorf("failed to generate UUID: %w", err)
 	}
-	//fmt.Println("spoofed: ", uuid)
 	return uuid, nil
 }
 
@@ -35,8 +34,8 @@ func (f *UUIDFaker) GetFormat() string {
 func NewUUIDFaker(format string, rng *rand.Rand) *UUIDFaker {
 	return &UUIDFaker{
 		datatype: models.Type("uuid.UUID"),
-		format: "Format not supported for UUID",
-		rng: rng,
+		format:   "Format not supported for UUID",
+		rng:      rng,
 	}
 }
 

@@ -4,17 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 
-	// "github.com/kream404/spoof/services/json"
 	"github.com/kream404/spoof/models"
+	log "github.com/kream404/spoof/services/logger"
+
 	_ "github.com/lib/pq"
 )
 
 const (
-  host     = "localhost"
-  port     = 5432
-  user     = "user"
-  password = "password"
-  dbname   = "database"
+	host     = "localhost"
+	port     = 5432
+	user     = "user"
+	password = "password"
+	dbname   = "database"
 )
 
 type DBConnector struct {
@@ -25,9 +26,9 @@ func NewDBConnector() *DBConnector {
 	return &DBConnector{}
 }
 
-func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, error){
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+ "password=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Password, config.Name)
-	println(psqlInfo)
+func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, error) {
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Password, config.Name)
+	log.Debug("Connection string ", "string", psqlInfo)
 	database, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)
@@ -35,11 +36,11 @@ func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, e
 	return &DBConnector{DB: database}, nil
 }
 
-func (d *DBConnector) CloseConnection(){
-  err := d.DB.Close()
-  if err != nil {
-    panic(err)
-  }
+func (d *DBConnector) CloseConnection() {
+	err := d.DB.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, error) {
@@ -49,7 +50,7 @@ func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, er
 	}
 	defer db.CloseConnection()
 
-	println("statement: ", config.Statement)
+	log.Debug("Cache statement ", "sql", config.Statement)
 	result, err := db.FetchRows(config.Statement)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rows: %w", err)

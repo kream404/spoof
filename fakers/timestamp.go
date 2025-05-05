@@ -12,16 +12,15 @@ import (
 type TimestampFaker struct {
 	datatype models.Type
 	format   string
-	rng 		 *rand.Rand
+	rng      *rand.Rand
 }
 
 func (f *TimestampFaker) Generate() (any, error) {
-	value := time.Now();
+	value := time.Now()
 	if f.format != "" {
-		formattedTime := value.Format(f.format);
+		formattedTime := value.Format(f.format)
 		return fmt.Sprint(formattedTime), nil
 	}
-	//fmt.Println("spoofed Timestamp:", value)
 	return fmt.Sprint(value), nil
 }
 
@@ -37,7 +36,7 @@ func NewTimestampFaker(format string, rng *rand.Rand) *TimestampFaker {
 	return &TimestampFaker{
 		datatype: models.Type("Timestamp"),
 		format:   format,
-		rng: rng,
+		rng:      rng,
 	}
 }
 

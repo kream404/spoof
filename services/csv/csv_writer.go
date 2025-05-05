@@ -13,10 +13,7 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
-
-	"time"
-
-	"github.com/briandowns/spinner"
+	log "github.com/kream404/spoof/services/logger"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -26,7 +23,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
-			return fmt.Errorf("failed to create output file: %w", err)
+			log.Error("failed to create output file", "error", err)
 		}
 
 		writer := csv.NewWriter(outFile)
@@ -45,26 +42,24 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		if file.CacheConfig != nil {
 			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 			if err != nil {
-				println("failed to load cache: ", fmt.Sprint(err))
+				log.Error("Failed to load cache ", "error", err)
 				os.Exit(1) //if we provide a cache, and cant populate it throw an error
 			}
 		}
 
-		// start spinner
-		s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-		s.Prefix = "spoofing	"
-		s.Start()
+		//TODO: look into new spinner that works with slog
 
 		// rng := rand.New(rand.NewSource(42))
 		rng := CreateRNGSeed(file.Config.Seed)
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
-				fmt.Printf("Row Error: %v\n", err)
+				log.Error("Row Error ", "error", err)
 				os.Exit(1)
 			}
 			if err := writer.Write(row); err != nil {
-				fmt.Printf("CSV Write Error: %v\n", err)
+				log.Error("CSV write error ", "error", err)
+				os.Exit(1)
 			}
 
 			cacheIndex++ //increment pointers
@@ -77,7 +72,8 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 
 		writer.Flush()
 		if err := writer.Error(); err != nil {
-			return fmt.Errorf("CSV writer error: %w", err)
+			log.Error("CSV write error ", "error", err)
+			os.Exit(1)
 		}
 
 		outFile.Close()
@@ -90,12 +86,12 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	outputFile := filepath.Join(outputDir, config.FileName)
 
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed to create output directory: %w", err)
+		return nil, err
 	}
 
 	file, err := os.Create(outputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %w", err)
+		return nil, err
 	}
 	return file, nil
 }
@@ -131,7 +127,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 				if parsed, err := strconv.ParseFloat(targetValue, 64); err == nil {
 					value = parsed * *field.Modifier
 				} else {
-					fmt.Printf("modifier ignored: '%s' is not a numeric string\n", targetValue)
+					log.Debug("modifier ignored: '%s' is not a numeric string\n", "target", targetValue)
 				}
 			}
 
@@ -174,9 +170,9 @@ func CreateRNGSeed(seed_in string) *rand.Rand {
 	} else {
 		s = uuid.NewString()
 	}
-
-	println("seed: ", s)
-	fmt.Println("========================================")
+	log.Info("============================================")
+	log.Info("", "seed", s)
+	log.Info("============================================")
 
 	seed = stringToSeed(s)
 	return rand.New(rand.NewSource(seed))

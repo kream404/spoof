@@ -10,18 +10,17 @@ import (
 type PhoneFaker struct {
 	datatype models.Type
 	format   string
-	rng 		 *rand.Rand
+	rng      *rand.Rand
 }
 
 //TODO: Add proper generation logic here. You may need to set-up a type
 
-//TODO: should I make a basic random string generator that uses regex?? might be useful for other fakers
-//it would be a good excue to get the barebones of reading in a formatter working, would be lift and shift for
-//the config version
+// TODO: should I make a basic random string generator that uses regex?? might be useful for other fakers
+// it would be a good excue to get the barebones of reading in a formatter working, would be lift and shift for
+// the config version
 func (f *PhoneFaker) Generate() (any, error) {
 	//TODO: Implement generation logic
 	value := "908230912839083"
-	//fmt.Println("spoofed phone:", value)
 	return value, nil
 }
 
@@ -37,7 +36,7 @@ func NewPhoneFaker(format string, rng *rand.Rand) *PhoneFaker {
 	return &PhoneFaker{
 		datatype: models.Type("Phone"),
 		format:   format,
-		rng: rng,
+		rng:      rng,
 	}
 }
 
