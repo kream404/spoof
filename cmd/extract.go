@@ -44,7 +44,7 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 	config := models.Config{
 		FileName:       filepath.Base(file.Name()),
 		Delimiter:      string(delimiter),
-		RowCount:       len(records) - 1,
+		RowCount:       len(records) - 1, //to account for header annotation
 		IncludeHeaders: true,
 	}
 
@@ -59,7 +59,7 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 	}
 
 	log.Info("Extracted config")
-	log.Debug("Summary	", "fields", fmt.Sprint(types), "count", fmt.Sprint(len(entity.Fields)))
+	log.Debug("Summary	", "field_types", fmt.Sprint(types), "count", fmt.Sprint(len(entity.Fields)))
 
 	return fileConfig, nil
 }
