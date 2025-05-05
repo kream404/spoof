@@ -91,7 +91,7 @@ func DetectType(col []string, header string) (models.Field, error) {
 	}
 
 	if ok, layout := isTimestamp(v); ok {
-		return models.Field{Name: header, Type: "timestap", Format: layout}, nil
+		return models.Field{Name: header, Type: "timestamp", Format: layout}, nil
 	}
 	if isEmail(v) {
 		return models.Field{Name: header, Type: "email"}, nil

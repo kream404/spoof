@@ -190,5 +190,5 @@ func Execute() {
 		os.Exit(1)
 	}
 	elapsed := time.Since(start)
-	log.Info("⏱️  Done in ", "time", elapsed)
+	log.Info("Done in ", "time", elapsed)
 }
