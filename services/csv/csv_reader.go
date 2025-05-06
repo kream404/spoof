@@ -73,7 +73,7 @@ func MapFields(records [][]string) ([]models.Field, []string, error) {
 		}
 
 		types = append(types, field.Type)
-		fields = append(fields, field) //TODO: detect type should return the field. can do type specific config better
+		fields = append(fields, field)
 	}
 	return fields, types, nil
 }
@@ -105,7 +105,7 @@ func DetectType(col []string, header string) (models.Field, error) {
 	}
 	if ok, decimals, length := isNumber(v); ok {
 		println(decimals, length)
-		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil //TODO: detect decimal places and set
+		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
 
@@ -124,13 +124,10 @@ func isInteger(s string) bool {
 
 func isNumber(s string) (valid bool, decimals int, length int) {
 	s = strings.TrimSpace(s)
-
-	// Check if it's a valid float
 	if _, err := strconv.ParseFloat(s, 64); err != nil {
 		return false, 0, 0
 	}
 
-	// Remove sign if present
 	s = strings.TrimPrefix(s, "-")
 	s = strings.TrimPrefix(s, "+")
 
