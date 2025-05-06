@@ -3,6 +3,7 @@ package csv
 import (
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"os"
 	"regexp"
 	"sort"
@@ -102,9 +103,9 @@ func DetectType(col []string, header string) (models.Field, error) {
 	if ok, set := isRange(col, 256); ok {
 		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
-	if isFloat(v) {
-		return models.Field{Name: header, Type: "number", Min: -100, Max: 5000}, nil //TODO: detect decimal places and set
-
+	if ok, decimals, length := isNumber(v); ok {
+		println(decimals, length)
+		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil //TODO: detect decimal places and set
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
 
@@ -121,9 +122,26 @@ func isInteger(s string) bool {
 	return err == nil
 }
 
-func isFloat(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
-	return err == nil
+func isNumber(s string) (valid bool, decimals int, length int) {
+	s = strings.TrimSpace(s)
+
+	// Check if it's a valid float
+	if _, err := strconv.ParseFloat(s, 64); err != nil {
+		return false, 0, 0
+	}
+
+	// Remove sign if present
+	s = strings.TrimPrefix(s, "-")
+	s = strings.TrimPrefix(s, "+")
+
+	if strings.Contains(s, ".") {
+		parts := strings.SplitN(s, ".", 2)
+		decimals = len(parts[1])
+	} else {
+		length = len(s)
+	}
+
+	return true, decimals, length
 }
 
 func isTimestamp(s string) (bool, string) {
