@@ -105,6 +105,12 @@ Generates a random floating-point number between a minimum and maximum. An optio
 { "name": "amount", "type": "number", "format": "2", "min": -2000.00, "max": 2000.00 },
 ```
 
+If you need to generate a random number of a given length, you can pass a `length` attribute. This will generate a random number with a fixed number of digits.
+
+```json
+{ "name": "code", "type": "number", "length": 14 },
+```
+
 ---
 
 ### `timestamp`
