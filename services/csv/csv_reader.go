@@ -159,15 +159,10 @@ func isIterator(col []string) bool {
 }
 
 func isRange(col []string, maxDistinct int) (bool, []string) {
-	set := make(map[string]struct{})
-
-	for _, v := range col {
-		v = strings.TrimSpace(v)
-		if v == "" {
-			continue
-		}
-		set[v] = struct{}{}
-		if len(set) > maxDistinct { //now tracking distinct values to not misclassify numbers as is range, it was getting out of hand
+	set := make(map[string]int)
+	for _, row := range col {
+		set[row]++
+		if len(set) > maxDistinct {
 			return false, nil
 		}
 	}
