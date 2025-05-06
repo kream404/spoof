@@ -7,13 +7,14 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
 	log "github.com/kream404/spoof/services/logger"
+	"github.com/shopspring/decimal"
 )
 
 func GenerateCSV(config models.FileConfig, outputPath string) error {
@@ -116,7 +117,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			}
 			value = seed[seedIndex][key]
 
-		case field.Type == "reflection": //TODO: I dont like this, this could get out of hand quickly. not sure where this should live
+		case field.Type == "reflection":
 			targetValue, ok := generatedFields[field.Target]
 			if !ok {
 				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
@@ -124,11 +125,12 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 
 			value = targetValue
 			if field.Modifier != nil {
-				if parsed, err := strconv.ParseFloat(targetValue, 64); err == nil {
-					value = parsed * *field.Modifier
-				} else {
-					log.Debug("modifier ignored: '%s' is not a numeric string\n", "target", targetValue)
+				modifiedValue, err := modifier(targetValue, *field.Modifier)
+				if err != nil {
+					log.Debug("modifier ignored: '%s' is not a valid number\n", "target", targetValue)
+					return nil, err
 				}
+				value = modifiedValue
 			}
 
 		case field.Type == "iterator":
@@ -176,4 +178,19 @@ func CreateRNGSeed(seed_in string) *rand.Rand {
 
 	seed = stringToSeed(s)
 	return rand.New(rand.NewSource(seed))
+}
+
+func modifier(raw string, modifier float64) (string, error) {
+	decimalValue, err := decimal.NewFromString(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid number: %v", err)
+	}
+	modifiedValue := decimalValue.Mul(decimal.NewFromFloat(modifier))
+
+	decimals := 0
+	if dot := strings.Index(raw, "."); dot != -1 {
+		decimals = len(raw) - dot - 1
+	}
+
+	return modifiedValue.StringFixed(int32(decimals)), nil
 }

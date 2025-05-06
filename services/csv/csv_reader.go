@@ -3,6 +3,7 @@ package csv
 import (
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"os"
 	"regexp"
 	"sort"
@@ -72,7 +73,7 @@ func MapFields(records [][]string) ([]models.Field, []string, error) {
 		}
 
 		types = append(types, field.Type)
-		fields = append(fields, field) //TODO: detect type should return the field. can do type specific config better
+		fields = append(fields, field)
 	}
 	return fields, types, nil
 }
@@ -99,12 +100,12 @@ func DetectType(col []string, header string) (models.Field, error) {
 	if isIterator(col) {
 		return models.Field{Name: header, Type: "iterator"}, nil
 	}
-	if ok, set := isRange(col, 10); ok {
+	if ok, set := isRange(col, 256); ok {
 		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
-	if isFloat(v) {
-		return models.Field{Name: header, Type: "number", Min: -100, Max: 5000}, nil //TODO: detect decimal places and set
-
+	if ok, decimals, length := isNumber(v); ok {
+		println(decimals, length)
+		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
 
@@ -121,9 +122,23 @@ func isInteger(s string) bool {
 	return err == nil
 }
 
-func isFloat(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
-	return err == nil
+func isNumber(s string) (valid bool, decimals int, length int) {
+	s = strings.TrimSpace(s)
+	if _, err := strconv.ParseFloat(s, 64); err != nil {
+		return false, 0, 0
+	}
+
+	s = strings.TrimPrefix(s, "-")
+	s = strings.TrimPrefix(s, "+")
+
+	if strings.Contains(s, ".") {
+		parts := strings.SplitN(s, ".", 2)
+		decimals = len(parts[1])
+	} else {
+		length = len(s)
+	}
+
+	return true, decimals, length
 }
 
 func isTimestamp(s string) (bool, string) {
@@ -159,15 +174,10 @@ func isIterator(col []string) bool {
 }
 
 func isRange(col []string, maxDistinct int) (bool, []string) {
-	set := make(map[string]struct{})
-
-	for _, v := range col {
-		v = strings.TrimSpace(v)
-		if v == "" {
-			continue
-		}
-		set[v] = struct{}{}
-		if len(set) > maxDistinct { //now tracking distinct values to not misclassify numbers as is range, it was getting out of hand
+	set := make(map[string]int)
+	for _, row := range col {
+		set[row]++
+		if len(set) > maxDistinct {
 			return false, nil
 		}
 	}
