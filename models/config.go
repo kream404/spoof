@@ -36,6 +36,7 @@ type Field struct {
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
 	Format     string   `json:"format,omitempty"`
+	Length     int      `json:"length,omitempty"`
 	Min        float64  `json:"min,omitempty"`
 	Max        float64  `json:"max,omitempty"`
 	Value      string   `json:"value,omitempty"`
