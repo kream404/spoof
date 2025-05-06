@@ -99,7 +99,7 @@ func DetectType(col []string, header string) (models.Field, error) {
 	if isIterator(col) {
 		return models.Field{Name: header, Type: "iterator"}, nil
 	}
-	if ok, set := isRange(col, 10); ok {
+	if ok, set := isRange(col, 256); ok {
 		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
 	if isFloat(v) {
