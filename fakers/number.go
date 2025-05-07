@@ -2,7 +2,6 @@ package fakers
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"strconv"
 
@@ -21,14 +20,22 @@ type NumberFaker struct {
 
 func (f *NumberFaker) Generate() (any, error) {
 	if f.length != 0 {
-		min := int(math.Pow10(f.length - 1))
-		max := int(math.Pow10(f.length)) - 1
-		return f.rng.Intn(max-min+1) + min, nil
+		value := f.GenerateRandomNumberOfLength(f.length)
+		return value, nil
 	}
 	rawValue := f.min + f.rng.Float64()*(f.max-f.min)
 	decimals, _ := strconv.Atoi(f.format)
 	format := fmt.Sprintf("%%.%df", decimals)
 	return fmt.Sprintf(format, rawValue), nil
+}
+
+func (f *NumberFaker) GenerateRandomNumberOfLength(length int) string {
+	const charset = "0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[f.rng.Intn(len(charset))]
+	}
+	return string(result)
 }
 
 func (f *NumberFaker) GetType() models.Type {
