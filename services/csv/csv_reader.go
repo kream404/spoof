@@ -104,7 +104,6 @@ func DetectType(col []string, header string) (models.Field, error) {
 		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
 	if ok, decimals, length := isNumber(v); ok {
-		println(decimals, length)
 		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
