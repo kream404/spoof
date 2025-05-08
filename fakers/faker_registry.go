@@ -1,12 +1,12 @@
 package fakers
 
 import (
-	"log"
 	"math/rand"
 	"sync"
 
 	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
+	log "github.com/kream404/spoof/services/logger"
 )
 
 type FakerFactory func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error)
@@ -25,7 +25,7 @@ func GetFakerByName(name string) (FakerFactory, bool) {
 	defer mu.Unlock()
 	factory, found := registry[name]
 	if !found {
-		log.Fatalf("Unsupported faker: %s", name)
+		log.Error("Unsupported faker")
 	}
 	return factory, found
 }

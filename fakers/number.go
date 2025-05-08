@@ -46,7 +46,13 @@ func (f *NumberFaker) GetFormat() string {
 	return f.format
 }
 
-func NewNumberFaker(format string, length int, min float64, max float64, rng *rand.Rand) *NumberFaker {
+func NewNumberFaker(format string, length int, min float64, max float64, rng *rand.Rand) (*NumberFaker, error) {
+	args := []any{format, length, min, max}
+	_, err := validate(args)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+
 	return &NumberFaker{
 		datatype: models.Type("Number"),
 		format:   format,
@@ -54,11 +60,27 @@ func NewNumberFaker(format string, length int, min float64, max float64, rng *ra
 		min:      min,
 		max:      max,
 		rng:      rng,
+	}, nil
+}
+
+func validate(args []any) (bool, error) {
+	for _, value := range args {
+		if value == nil {
+			return false, fmt.Errorf("You must provide valid configuration for number: See docs for more info")
+		}
 	}
+	if args[2] == args[3] {
+		return false, fmt.Errorf("You must provide valid configuration for number: See docs for more info")
+	}
+	return true, nil
 }
 
 func init() {
 	RegisterFaker("number", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
-		return NewNumberFaker(field.Format, field.Length, field.Min, field.Max, rng), nil
+		faker, err := NewNumberFaker(field.Format, field.Length, field.Min, field.Max, rng)
+		if err != nil {
+			return nil, err
+		}
+		return faker, nil
 	})
 }

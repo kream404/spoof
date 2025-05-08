@@ -120,6 +120,10 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 		case field.Type == "reflection":
 			targetValue, ok := generatedFields[field.Target]
 			if !ok {
+				log.Error("Reflection error", "field_name", field.Name)
+				if field.Target == "" {
+					return nil, fmt.Errorf("You must provide a 'target' to use reflection")
+				}
 				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 			}
 
@@ -127,7 +131,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			if field.Modifier != nil {
 				modifiedValue, err := modifier(targetValue, *field.Modifier)
 				if err != nil {
-					log.Debug("modifier ignored: '%s' is not a valid number\n", "target", targetValue)
+					log.Error("modifier ignored: not a valid number", "target", targetValue)
 					return nil, err
 				}
 				value = modifiedValue
@@ -143,7 +147,8 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			}
 			faker, err := factory(field, rng)
 			if err != nil {
-				return nil, fmt.Errorf("error creating faker for field %s: %w", field.Name, err)
+				log.Error("Error creating faker", "field_name", field.Name, "type", field.Type)
+				return nil, fmt.Errorf("%w", err)
 			}
 			value, err = faker.Generate()
 			if err != nil {
