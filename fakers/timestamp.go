@@ -18,7 +18,7 @@ type TimestampFaker struct {
 func (f *TimestampFaker) Generate() (any, error) {
 	now := time.Now()
 	offset := time.Duration(int64(f.interval))
-	value := now.Add(-offset)
+	value := now.Add(offset)
 
 	if f.format != "" {
 		return value.Format(f.format), nil

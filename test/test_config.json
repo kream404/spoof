@@ -28,6 +28,7 @@
         {
           "name": "updated_at",
           "type": "timestamp",
+          "interval": -604800,
           "format": "02-01-2006"
         },
         {
