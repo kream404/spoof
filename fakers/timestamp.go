@@ -23,7 +23,7 @@ func (f *TimestampFaker) Generate() (any, error) {
 	if f.format != "" {
 		return value.Format(f.format), nil
 	}
-	return value, nil // Return time.Time if no formatting is specified
+	return value, nil
 }
 
 func (f *TimestampFaker) GetType() models.Type {
