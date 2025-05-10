@@ -4,7 +4,7 @@
       "config": {
         "file_name": "testfile4.csv",
         "delimiter": "|",
-        "rowcount": "5",
+        "rowcount": "1000",
         "include_headers": true,
         "seed": "4ddcdc49-13ec-4625-aa17-e921135a740b"
       },
@@ -28,7 +28,7 @@
         {
           "name": "updated_at",
           "type": "timestamp",
-          "interval": -604800,
+          "interval": 604800,
           "format": "02-01-2006"
         },
         {
