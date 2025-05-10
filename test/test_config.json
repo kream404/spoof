@@ -28,7 +28,7 @@
         {
           "name": "updated_at",
           "type": "timestamp",
-          "format": "02-01-06 15:04:05"
+          "format": "02-01-2006"
         },
         {
           "name": "email",
