@@ -1,7 +1,6 @@
 package fakers
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -12,16 +11,19 @@ import (
 type TimestampFaker struct {
 	datatype models.Type
 	format   string
+	interval time.Duration
 	rng      *rand.Rand
 }
 
 func (f *TimestampFaker) Generate() (any, error) {
-	value := time.Now()
+	now := time.Now()
+	offset := time.Duration(int64(f.interval))
+	value := now.Add(offset)
+
 	if f.format != "" {
-		formattedTime := value.Format(f.format)
-		return fmt.Sprint(formattedTime), nil
+		return value.Format(f.format), nil
 	}
-	return fmt.Sprint(value), nil
+	return value, nil
 }
 
 func (f *TimestampFaker) GetType() models.Type {
@@ -32,16 +34,17 @@ func (f *TimestampFaker) GetFormat() string {
 	return f.format
 }
 
-func NewTimestampFaker(format string, rng *rand.Rand) *TimestampFaker {
+func NewTimestampFaker(format string, intervalSeconds int64, rng *rand.Rand) *TimestampFaker {
 	return &TimestampFaker{
 		datatype: models.Type("Timestamp"),
 		format:   format,
+		interval: time.Duration(intervalSeconds) * time.Second,
 		rng:      rng,
 	}
 }
 
 func init() {
 	RegisterFaker("timestamp", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
-		return NewTimestampFaker(field.Format, rng), nil
+		return NewTimestampFaker(field.Format, field.Interval, rng), nil
 	})
 }

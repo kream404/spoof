@@ -41,6 +41,7 @@ type Field struct {
 	Max        float64  `json:"max,omitempty"`
 	Value      string   `json:"value,omitempty"`
 	Values     string   `json:"values,omitempty"`
+	Interval   int64    `json:"interval,omitempty"`
 	Target     string   `json:"target,omitempty"`
 	SeedType   string   `json:"seed_type,omitempty"`
 }

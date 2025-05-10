@@ -100,7 +100,8 @@ func DetectType(col []string, header string) (models.Field, error) {
 	if isIterator(col) {
 		return models.Field{Name: header, Type: "iterator"}, nil
 	}
-	if ok, set := isRange(col, 256); ok {
+
+	if ok, set := isRange(col, len(col)); ok {
 		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
 	}
 	if ok, decimals, length := isNumber(v); ok {
@@ -172,7 +173,12 @@ func isIterator(col []string) bool {
 	return true
 }
 
-func isRange(col []string, maxDistinct int) (bool, []string) {
+func isRange(col []string, rowCount int) (bool, []string) {
+	maxDistinct := int(float64(rowCount) * 0.01)
+	if maxDistinct < 10 {
+		maxDistinct = 10
+	}
+
 	set := make(map[string]int)
 	for _, row := range col {
 		set[row]++

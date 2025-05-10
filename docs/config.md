@@ -115,10 +115,10 @@ If you need to generate a random number of a given length, you can pass a `lengt
 
 ### `timestamp`
 
-Creates a timestamp using the current time formatted with Go-style time syntax. This is not currently deterministic.
+Creates a timestamp using the current time formatted with Go-style time syntax. You can optionally pass an interval to offset the time. This is provided as seconds and supports both positive and negative values.  This is not currently deterministic.
 
 ```json
-{ "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" }
+{ "name": "updated_at", "type": "timestamp", "interval": -604800 , "format": "02-01-06 15:04:05" }
 ```
 
 > Supports custom formatting using [Go time layouts](https://pkg.go.dev/time#pkg-constants).
