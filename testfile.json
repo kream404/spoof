@@ -1,0 +1,48 @@
+{
+  "files": [
+    {
+      "config": {
+        "file_name": "testfile.csv",
+        "delimiter": "|",
+        "rowcount": "50000",
+        "include_headers": true
+      },
+      "fields": [
+        {
+          "name": "id",
+          "type": "iterator"
+        },
+        {
+          "name": "customerid",
+          "type": "uuid"
+        },
+        {
+          "name": "indicator",
+          "type": "range",
+          "values": "2, BT, DD, MFDD, ONE, ONLINE, POS, THREE"
+        },
+        {
+          "name": "indicatorid",
+          "type": "range",
+          "values": "1, 2, 3, 4, 5, 6"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "min": -100,
+          "max": 5000
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "format": "02/01/2006"
+        },
+
+        {
+          "name": "email",
+          "type": "email"
+        }
+      ]
+    }
+  ]
+}
