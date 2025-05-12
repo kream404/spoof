@@ -157,7 +157,7 @@ func loadConfig() error {
 			log.Error("Failed to load connection profile", "err", "profile not found")
 			os.Exit(1)
 		}
-		log.Debug("Profile loaded", "profile", fmt.Sprintln(cacheProfile))
+		log.Debug("Profile loaded", "profile", profile)
 
 		if cacheProfile.Password == "" {
 			fmt.Print("enter db password: ")

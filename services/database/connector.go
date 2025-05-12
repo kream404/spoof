@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/kream404/spoof/models"
-	"github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 
 	_ "github.com/lib/pq"
@@ -122,6 +121,6 @@ func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
 		results = append(results, rowMap)
 	}
 
-	fmt.Println(json.ToJSONString(results))
+	log.Debug("Cache populated from db", "sample_row", fmt.Sprint(results[0]))
 	return results, nil
 }
