@@ -64,12 +64,12 @@ func NewNumberFaker(format string, length int, min float64, max float64, rng *ra
 }
 
 func validate(args []any) (bool, error) {
-	for _, value := range args {
-		if value == nil {
+	for _, arg := range args {
+		if arg == nil {
 			return false, fmt.Errorf("You must provide valid configuration for number: See docs for more info")
 		}
 	}
-	if args[2] == args[3] {
+	if args[1] == nil && args[2] == args[3] {
 		return false, fmt.Errorf("You must provide valid configuration for number: See docs for more info")
 	}
 	return true, nil
