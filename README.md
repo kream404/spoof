@@ -63,30 +63,6 @@ You can also generate a config file from a CSV. The type inference is not perfec
 spoof --extract ./path/to/csvfile.csv
 ```
 
-## Connection Profiles
-
-Profiles are stored at `~/.config/spoof/profiles.ini`. Example:
-
-```ini
-[local]
-hostname = localhost
-port = 5432
-username = user
-password =
-name = mydb
-```
-
-> If the `password` field is empty, you will be prompted at runtime.
-
-
-To use a database profile override, you can pass the profile as an argument:
-
-```bash
-spoof -c ./configs/sample.json -p local
-```
-
----
-
 ## Output
 
 CSV files are saved to:

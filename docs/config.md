@@ -23,6 +23,36 @@ Here is an example of the `cache` section:
 }
 ```
 
+The cache can alternatively be populated using an sql statement sourced from a file using the `source` config attribute. The path should be relative to the execution directory.
+
+```json
+"cache": {
+  "source": "test/customer_cache.sql"
+}
+```
+
+## Connection Profiles
+Connection profiles can be used to quickly seed data from different environments. Profiles are stored at `~/.config/spoof/profiles.ini` and contain connection variables for a specified environment.
+
+```ini
+[local]
+hostname = localhost
+port = 5432
+username = user
+password =
+name = mydb
+```
+
+> If the `password` field is empty, you will be prompted at runtime.
+
+
+To use a database profile override, you can pass the profile as an argument:
+
+```bash
+spoof -c ./configs/sample.json -p local
+```
+---
+
 ### Seed
 
 The file config can optionally be provisioned with a seed. This will be the seed used for all RNG operations in the generation, giving deterministic results.
