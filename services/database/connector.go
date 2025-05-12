@@ -3,8 +3,10 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	"github.com/kream404/spoof/models"
+	"github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 
 	_ "github.com/lib/pq"
@@ -44,19 +46,42 @@ func (d *DBConnector) CloseConnection() {
 }
 
 func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, error) {
+	var result []map[string]any
 	db, err := NewDBConnector().OpenConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.CloseConnection()
 
-	log.Debug("Cache statement ", "sql", config.Statement)
-	result, err := db.FetchRows(config.Statement)
+	log.Debug("Populating cache with file", "path", config.Source)
+
+	if config.Source != "" {
+		sql, err := loadSQLFromFile(config.Source)
+		if err != nil {
+			return nil, err
+		}
+		result, err = db.FetchRows(sql)
+	} else {
+		log.Debug("Cache statement ", "sql", config.Statement)
+		result, err = db.FetchRows(config.Statement)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rows: %w", err)
 	}
 
 	return result, nil
+}
+
+func loadSQLFromFile(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read SQL file: %w", err)
+	}
+	sql := string(content)
+	if sql == "" {
+		return "", fmt.Errorf("SQL file at %s is empty", path)
+	}
+	return sql, nil
 }
 
 func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
@@ -97,6 +122,6 @@ func (d *DBConnector) FetchRows(query string) ([]map[string]any, error) {
 		results = append(results, rowMap)
 	}
 
-	// fmt.Println(json.MapToJSON(results))
+	fmt.Println(json.ToJSONString(results))
 	return results, nil
 }

@@ -68,7 +68,7 @@ var rootCmd = &cobra.Command{
 
 		if config != nil {
 			log.Info("Generating CSV...")
-			runVerboseCSV()
+			runGenerateCSV()
 		}
 
 		if scaffold && scaffold_name != "" {
@@ -111,7 +111,7 @@ func runGenerate(cmd *cobra.Command) {
 	generateCmd.Run(cmd, genArgs)
 }
 
-func runVerboseCSV() {
+func runGenerateCSV() {
 	csv.GenerateCSV(*config, "./output/output.csv")
 }
 

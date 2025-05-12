@@ -5,11 +5,10 @@
         "file_name": "testfile4.csv",
         "delimiter": "|",
         "rowcount": "1000",
-        "include_headers": true,
-        "seed": "4ddcdc49-13ec-4625-aa17-e921135a740b"
+        "include_headers": true
       },
       "cache": {
-        "statement": "SELECT * FROM account.customer"
+        "source": "test/customer_cache.sql"
       },
       "fields": [
         { "name": "id", "type": "iterator" },
@@ -17,6 +16,11 @@
           "name": "customerstatusid",
           "type": "range",
           "values": "1, 2, 3, 4, 5, 6"
+        },
+        {
+          "name": "code",
+          "type": "number",
+          "length": 10
         },
         {
           "name": "amount",
@@ -33,9 +37,7 @@
         },
         {
           "name": "email",
-          "type": "email",
-          "seed_type": "db",
-          "alias": "customer_email"
+          "type": "email"
         },
         {
           "name": "inverse",
