@@ -20,7 +20,6 @@ import (
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	var cache []map[string]any
 	var cacheIndex, rowIndex = 0, 1 //cacheindex tracks row in cache, rowindex tracks row in file..
-
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
