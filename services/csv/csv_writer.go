@@ -40,10 +40,15 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		}
 
 		if file.CacheConfig != nil {
-			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
-			if err != nil {
-				log.Error("Failed to load cache ", "error", err)
-				os.Exit(1) //if we provide a cache, and cant populate it throw an error
+			if strings.Contains(file.CacheConfig.Source, ".csv"){
+				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source, "columns", file.CacheConfig.Columns)
+				cache, _, _, err = ReadCSV(file.CacheConfig.Source) //TODO: This should be refactopred to return a []map[string]any to be used interchangably with a db cache
+			}else{
+				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
+				if err != nil {
+					log.Error("Failed to load cache ", "error", err)
+					os.Exit(1) //if we provide a cache, and cant populate it throw an error
+				}
 			}
 		}
 
@@ -96,7 +101,7 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
+func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
 	generatedFields := make(map[string]string)
 
@@ -114,7 +119,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			} else {
 				key = field.Name
 			}
-			value = seed[seedIndex][key]
+			value = cache[seedIndex][key]
 
 		case field.Type == "reflection":
 			targetValue, ok := generatedFields[field.Target]

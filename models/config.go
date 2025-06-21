@@ -27,6 +27,7 @@ type CacheConfig struct {
 	Name      string `json:"name"`
 	Statement string `json:"statement"`
 	Source    string `json:"source"`
+	Columns   []string `json: "columns"`
 }
 
 type Field struct {
@@ -61,6 +62,7 @@ func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
 	merged.Statement = c.Statement
 	merged.Source = c.Source
+	merged.Columns = c.Columns
 
 	if merged.Hostname == "" {
 		merged.Hostname = c.Hostname

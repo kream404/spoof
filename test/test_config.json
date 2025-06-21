@@ -2,13 +2,61 @@
   "files": [
     {
       "config": {
-        "file_name": "testfile4.csv",
+        "file_name": "testfile1.csv",
         "delimiter": "|",
         "rowcount": "1000",
         "include_headers": true
       },
       "cache": {
         "source": "test/customer_cache.sql"
+      },
+      "fields": [
+        { "name": "customerid", "type": "uuid" },
+        {
+          "name": "customerstatusid",
+          "type": "range",
+          "values": "1, 2, 3, 4, 5, 6"
+        },
+        {
+          "name": "code",
+          "type": "number",
+          "length": 10
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "format": "2",
+          "min": -2000.0,
+          "max": 2000.0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "interval": 604800,
+          "format": "02-01-2006"
+        },
+        {
+          "name": "email",
+          "type": "email"
+        },
+        {
+          "name": "inverse",
+          "type": "reflection",
+          "target": "amount",
+          "modifier": -1
+        }
+      ]
+    },
+    {
+      "config": {
+        "file_name": "testfile2.csv",
+        "delimiter": "|",
+        "rowcount": "1000",
+        "include_headers": true
+      },
+      "cache": {
+        "source": "output/testfile1.csv",
+        "columns": ["customerid"]
       },
       "fields": [
         { "name": "id", "type": "iterator" },
