@@ -34,7 +34,7 @@ var extractCmd = &cobra.Command{
 }
 
 func ExtractConfigFile(path string) (*models.FileConfig, error) {
-	records, file, delimiter, err := csv.ReadCSV(path)
+	records, filename, delimiter, headerID, footerID, err := csv.ReadCSV(path)
 	if err != nil {
 		log.Error("Failed to read csv	", "path", path)
 		return nil, err
@@ -42,10 +42,12 @@ func ExtractConfigFile(path string) (*models.FileConfig, error) {
 
 	fields, types, _ := csv.MapFields(records)
 	config := models.Config{
-		FileName:       filepath.Base(file.Name()),
+		FileName:       filepath.Base(filename),
 		Delimiter:      string(delimiter),
-		RowCount:       len(records) - 1, //to account for header annotation
+		RowCount:       len(records) - 1,
 		IncludeHeaders: true,
+		Header:         headerID,
+		Footer:         footerID,
 	}
 
 	entity := models.Entity{
