@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"hash/fnv"
@@ -20,13 +21,15 @@ import (
 func GenerateCSV(config models.FileConfig, outputPath string) error {
 	var cache []map[string]any
 	var cacheIndex, rowIndex = 0, 1 //cacheindex tracks row in cache, rowindex tracks row in file..
+
 	for _, file := range config.Files {
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
 			log.Error("failed to create output file", "error", err)
 		}
 
-		writer := csv.NewWriter(outFile)
+		tempWriter := &strings.Builder{}
+		writer := csv.NewWriter(tempWriter)
 		writer.Comma = rune(file.Config.Delimiter[0])
 
 		if file.Config.IncludeHeaders {
@@ -43,15 +46,12 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 			if err != nil {
 				log.Error("Failed to load cache ", "error", err)
-				os.Exit(1) //if we provide a cache, and cant populate it throw an error
+				os.Exit(1)
 			}
 		}
 
-		//TODO: look into new spinner that works with slog
-
-		// rng := rand.New(rand.NewSource(42))
 		rng := CreateRNGSeed(file.Config.Seed)
-		for range file.Config.RowCount {
+		for i := 0; i < file.Config.RowCount; i++ {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
 			if err != nil {
 				log.Error("Row Error ", "error", err)
@@ -62,9 +62,8 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 				os.Exit(1)
 			}
 
-			cacheIndex++ //increment pointers
+			cacheIndex++
 			rowIndex++
-
 			if len(cache) > 0 && cacheIndex >= len(cache) {
 				cacheIndex = 0
 			}
@@ -73,6 +72,23 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		writer.Flush()
 		if err := writer.Error(); err != nil {
 			log.Error("CSV write error ", "error", err)
+			os.Exit(1)
+		}
+
+		finalWriter := bufio.NewWriter(outFile)
+
+		if file.Config.Header != "" {
+			_, _ = finalWriter.WriteString(file.Config.Header + "\n")
+		}
+
+		_, _ = finalWriter.WriteString(tempWriter.String())
+
+		if file.Config.Footer != "" {
+			_, _ = finalWriter.WriteString(file.Config.Footer + "\n")
+		}
+
+		if err := finalWriter.Flush(); err != nil {
+			log.Error("Failed to flush final writer", "error", err)
 			os.Exit(1)
 		}
 
@@ -105,7 +121,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 		var key string
 
 		switch {
-		case field.Type == "" && field.Value != "":
+		case field.Type == "":
 			value = field.Value
 
 		case field.SeedType == "db":
@@ -155,7 +171,13 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			}
 		}
 
-		valueStr := fmt.Sprint(value)
+		var valueStr string
+		if value == nil {
+			valueStr = ""
+		} else {
+			valueStr = fmt.Sprint(value)
+		}
+
 		generatedFields[field.Name] = valueStr
 		record = append(record, valueStr)
 	}
