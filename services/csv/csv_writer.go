@@ -123,7 +123,7 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 		var key string
 
 		switch {
-		case field.Type == "" && field.Value != "":
+		case field.Type == "":
 			value = field.Value
 
 		case field.SeedType == "db":
@@ -173,7 +173,13 @@ func GenerateValues(file models.Entity, seed []map[string]any, rowIndex int, see
 			}
 		}
 
-		valueStr := fmt.Sprint(value)
+		var valueStr string
+		if value == nil {
+			valueStr = ""
+		} else {
+			valueStr = fmt.Sprint(value)
+		}
+
 		generatedFields[field.Name] = valueStr
 		record = append(record, valueStr)
 	}

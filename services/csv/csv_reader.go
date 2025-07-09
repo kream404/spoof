@@ -105,6 +105,10 @@ func DetectDelimiter(line string) rune {
 }
 
 func DetectType(col []string, header string) (models.Field, error) {
+	if isNullColumn(col) {
+		return models.Field{Name: header, Value: ""}, nil
+	}
+
 	v := strings.TrimSpace(col[0])
 	if isUUID(v) {
 		return models.Field{Name: header, Type: "uuid"}, nil
@@ -127,7 +131,6 @@ func DetectType(col []string, header string) (models.Field, error) {
 		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
-
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
@@ -175,6 +178,16 @@ func isTimestamp(s string) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func isNullColumn(col []string) bool {
+	nonEmpty := 0
+	for _, val := range col {
+		if strings.TrimSpace(val) != "" {
+			nonEmpty++
+		}
+	}
+	return nonEmpty == 0 || float64(nonEmpty)/float64(len(col)) < 0.05
 }
 
 func isEmail(s string) bool {
