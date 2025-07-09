@@ -28,7 +28,6 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			log.Error("failed to create output file", "error", err)
 		}
 
-		// Temporary buffer to hold CSV rows
 		tempWriter := &strings.Builder{}
 		writer := csv.NewWriter(tempWriter)
 		writer.Comma = rune(file.Config.Delimiter[0])
@@ -76,7 +75,6 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			os.Exit(1)
 		}
 
-		// Now write everything to the actual file with header/footer wrapping
 		finalWriter := bufio.NewWriter(outFile)
 
 		if file.Config.Header != "" {
