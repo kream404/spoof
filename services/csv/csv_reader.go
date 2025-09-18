@@ -48,6 +48,79 @@ func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
 	return records, file, delimiter, nil
 }
 
+func ReadCSVAsMap(filepath string) ([]map[string]any, []string, rune, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var firstLine string
+	if scanner.Scan() {
+		firstLine = scanner.Text()
+	} else if err := scanner.Err(); err != nil {
+		return nil, nil, 0, err
+	}
+
+	delimiter := DetectDelimiter(firstLine)
+
+	// rewind and read all with encoding/csv
+	if _, err := file.Seek(0, 0); err != nil {
+		return nil, nil, 0, err
+	}
+	r := csv.NewReader(file)
+	r.Comma = delimiter
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	if len(records) == 0 {
+		return nil, nil, delimiter, nil
+	}
+
+	rawHeaders := records[0]
+	headers := makeUniqueHeaders(rawHeaders)
+
+	rows := make([]map[string]any, 0, len(records)-1)
+	for i := 1; i < len(records); i++ {
+		rec := records[i]
+		row := make(map[string]any, len(headers))
+		for colIdx, h := range headers {
+			var v string
+			if colIdx < len(rec) {
+				v = rec[colIdx]
+			}
+			row[h] = v
+		}
+		rows = append(rows, row)
+	}
+
+	return rows, headers, delimiter, nil
+}
+
+func makeUniqueHeaders(in []string) []string {
+	seen := make(map[string]int)
+	out := make([]string, len(in))
+	for i, h := range in {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			h = fmt.Sprintf("col_%d", i)
+		}
+		key := h
+		if c, ok := seen[key]; ok {
+			seen[key] = c + 1
+			key = fmt.Sprintf("%s_%d", h, c+1)
+		} else {
+			seen[key] = 1
+		}
+		out[i] = key
+	}
+	return out
+}
+
+
 func MapFields(records [][]string) ([]models.Field, []string, error) {
 	log.Debug("Mapping fields")
 	var fields []models.Field
@@ -108,7 +181,6 @@ func DetectType(col []string, header string) (models.Field, error) {
 		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
 	return models.Field{Name: header, Type: "unknown"}, nil
-
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field

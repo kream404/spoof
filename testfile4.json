@@ -7,10 +7,13 @@
         "rowcount": "25",
         "include_headers": true
       },
+      "cache": {
+        "source": "output/testfile1.csv"
+      },
       "fields": [
         {
-          "name": "id",
-          "type": "iterator"
+          "name": "customerid",
+          "seed": true
         },
         {
           "name": "customerstatusid",

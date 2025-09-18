@@ -136,8 +136,6 @@ func loadConfig() error {
 		os.Exit(1)
 	}
 
-	log.Debug("Loading csv cache", "source", config.Files[1].CacheConfig.Source, "columns", config.Files[1].CacheConfig.Columns)
-
 	if profile != "" {
 		log.Info("Loading connection profile:", "profile", profile)
 		home, _ := os.UserHomeDir()

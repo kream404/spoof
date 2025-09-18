@@ -41,20 +41,17 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 
 		if file.CacheConfig != nil {
 			if strings.Contains(file.CacheConfig.Source, ".csv"){
-				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source, "columns", file.CacheConfig.Columns)
-				cache, _, _, err = ReadCSV(file.CacheConfig.Source) //TODO: This should be refactopred to return a []map[string]any to be used interchangably with a db cache
+				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
+				cache, _, _, err = ReadCSVAsMap(file.CacheConfig.Source)
 			}else{
 				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 				if err != nil {
 					log.Error("Failed to load cache ", "error", err)
-					os.Exit(1) //if we provide a cache, and cant populate it throw an error
+					os.Exit(1)
 				}
 			}
 		}
 
-		//TODO: look into new spinner that works with slog
-
-		// rng := rand.New(rand.NewSource(42))
 		rng := CreateRNGSeed(file.Config.Seed)
 		for range file.Config.RowCount {
 			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
@@ -113,7 +110,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 		case field.Type == "" && field.Value != "":
 			value = field.Value
 
-		case field.SeedType == "db":
+		case field.SeedType == true:
 			if field.Alias != "" {
 				key = field.Alias
 			} else {
