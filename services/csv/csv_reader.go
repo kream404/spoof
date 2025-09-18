@@ -16,36 +16,55 @@ import (
 )
 
 // returns records from csv, file, delim, easier to do all this on read
-func ReadCSV(filepath string) ([][]string, *os.File, rune, error) {
-
-	file, err := os.Open(filepath)
+func ReadCSV(path string) ([][]string, string, rune, string, string, error) {
+	file, err := os.Open(path)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, "", 0, "", "", err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	var firstLine string
-	if scanner.Scan() {
-		firstLine = scanner.Text()
-	} else if err := scanner.Err(); err != nil {
-		return nil, nil, 0, err
+	var lines []string
+
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, "", 0, "", "", err
 	}
 
-	delimiter := DetectDelimiter(firstLine)
-
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		return nil, nil, 0, err
+	if len(lines) < 3 {
+		return nil, "", 0, "", "", fmt.Errorf("file does not contain enough lines to have header/data/footer")
 	}
-	reader := csv.NewReader(file)
+
+	// Header and footer detection
+	delimiter := DetectDelimiter(lines[1]) // first data line after header
+	delimiterStr := string(delimiter)
+
+	var header, footer string
+	startIdx := 0
+	endIdx := len(lines)
+
+	if !strings.Contains(lines[0], delimiterStr) {
+		header = lines[0]
+		startIdx = 1
+	}
+	if !strings.Contains(lines[len(lines)-1], delimiterStr) {
+		footer = lines[len(lines)-1]
+		endIdx = len(lines) - 1
+	}
+
+	dataLines := lines[startIdx:endIdx]
+
+	reader := csv.NewReader(strings.NewReader(strings.Join(dataLines, "\n")))
 	reader.Comma = delimiter
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, "", 0, "", "", err
 	}
-	return records, file, delimiter, nil
+
+	return records, file.Name(), delimiter, header, footer, nil
 }
 
 func ReadCSVAsMap(filepath string) ([]map[string]any, []string, rune, error) {
@@ -159,6 +178,10 @@ func DetectDelimiter(line string) rune {
 }
 
 func DetectType(col []string, header string) (models.Field, error) {
+	if isNullColumn(col) {
+		return models.Field{Name: header, Value: ""}, nil
+	}
+
 	v := strings.TrimSpace(col[0])
 	if isUUID(v) {
 		return models.Field{Name: header, Type: "uuid"}, nil
@@ -228,6 +251,16 @@ func isTimestamp(s string) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func isNullColumn(col []string) bool {
+	nonEmpty := 0
+	for _, val := range col {
+		if strings.TrimSpace(val) != "" {
+			nonEmpty++
+		}
+	}
+	return nonEmpty == 0 || float64(nonEmpty)/float64(len(col)) < 0.05
 }
 
 func isEmail(s string) bool {

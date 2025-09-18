@@ -5,6 +5,8 @@ type Config struct {
 	Delimiter      string `json:"delimiter"`
 	RowCount       int    `json:"rowcount,string"`
 	IncludeHeaders bool   `json:"include_headers"`
+	Header         string `json:"header,omitempty"`
+	Footer         string `json:"footer,omitempty"`
 	Seed           string `json:"seed,omitempty"`
 }
 

@@ -100,6 +100,13 @@ This will hardcode a value to the given input. The row will always contain the s
 ```json
 { "name": "active", "value": "true" }
 ```
+
+This can also be used to create whitespace values in the output csv by providing an empty string for input.
+
+```json
+{ "name": "active", "value": "" }
+```
+
 ---
 
 ### `iterator`
