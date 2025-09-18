@@ -128,6 +128,7 @@ func runScaffold() {
 }
 
 func loadConfig() error {
+	log.Debug("Loading config	", "path", config_path)
 	var err error
 	config, err = json.LoadConfig(config_path)
 	if err != nil {
@@ -165,7 +166,9 @@ func loadConfig() error {
 			cacheProfile.Password = string(input)
 		}
 
+		//TODO: fix this so that it merges both caches ? they should be handled individually
 		merged := config.Files[0].CacheConfig.MergeConfig(cacheProfile)
+		log.Debug("Loading csv cache", "source", config.Files[1].CacheConfig.Source, "columns", config.Files[1].CacheConfig.Columns)
 		config.Files[0].CacheConfig = &merged
 	}
 

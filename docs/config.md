@@ -31,6 +31,14 @@ The cache can alternatively be populated using an sql statement sourced from a f
 }
 ```
 
+The output file can also be seeded from an existing CSV file. This works the same as seeding from a database. Aliases can be used in the same manner.
+
+```json
+"cache": {
+  "source": "test/existing.csv"
+}
+```
+
 ## Connection Profiles
 Connection profiles can be used to quickly seed data from different environments. Profiles are stored at `~/.config/spoof/profiles.ini` and contain connection variables for a specified environment.
 
@@ -75,10 +83,10 @@ Any run without a seed will output the seed used in generation to the console, w
 
 When configuring your CSV generation, each field in the `fields` array represents a column with specific data logic. The name provided will be the name of the column in the output file.
 
-Any field can be seeded from the database using the following syntax. If you want to have the column name in the ouput differ from the column name of the database, you can pass an alias. This will be the database column, and the name will be the csv column.
+Any field can be seeded from the database or an existing CSV using the following syntax. If you want to have the column name in the ouput differ from the column name of the database, you can pass an alias. This will be the database column, and the name will be the csv column.
 
 ```json
-{ ... "name":"id", "seed_type":"db", "alias":"customerid" }
+{ ... "name":"id", "seed":true, "alias":"customerid" }
 ```
 
 ---

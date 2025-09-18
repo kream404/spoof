@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "config": {
+        "file_name": "testfile4.csv",
+        "delimiter": "|",
+        "rowcount": "25",
+        "include_headers": true
+      },
+      "cache": {
+        "source": "output/testfile1.csv"
+      },
+      "fields": [
+        {
+          "name": "customerid",
+          "seed": true
+        },
+        {
+          "name": "customerstatusid",
+          "type": "range",
+          "values": "1, 2, 3, 4, 5, 6"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "format": "2",
+          "max": 5000
+        },
+        {
+          "name": "updated_at",
+          "type": "range",
+          "values": "17-05-2025"
+        },
+        {
+          "name": "email",
+          "type": "email"
+        },
+        {
+          "name": "inverse",
+          "type": "number",
+          "format": "2",
+          "max": 5000
+        }
+      ]
+    }
+  ]
+}

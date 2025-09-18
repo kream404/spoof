@@ -29,6 +29,7 @@ type CacheConfig struct {
 	Name      string `json:"name"`
 	Statement string `json:"statement"`
 	Source    string `json:"source"`
+	Columns   []string `json: "columns"`
 }
 
 type Field struct {
@@ -46,7 +47,7 @@ type Field struct {
 	Values     string   `json:"values,omitempty"`
 	Interval   int64    `json:"interval,omitempty"`
 	Target     string   `json:"target,omitempty"`
-	SeedType   string   `json:"seed_type,omitempty"`
+	SeedType   bool   `json:"seed,omitempty"`
 }
 
 type Entity struct {
@@ -63,6 +64,7 @@ func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
 	merged.Statement = c.Statement
 	merged.Source = c.Source
+	merged.Columns = c.Columns
 
 	if merged.Hostname == "" {
 		merged.Hostname = c.Hostname

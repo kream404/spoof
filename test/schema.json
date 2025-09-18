@@ -15,11 +15,11 @@
         "statement": "SELECT customer_id, amount, customer_email FROM account.customer;"
       },
       "fields": [
-        { "name": "customerid", "alias": "customer_id", "type": "uuid", "seed_type":"db" },
+        { "name": "customerid", "alias": "customer_id", "type": "uuid", "seed":true },
         { "name": "customerstatusid", "type": "range", "values": "1, 2, 3, 4, 5, 6" },
         { "name": "amount", "type": "number", "min": -2000.00, "max": 2000.00 },
         { "name": "updated_at", "type": "timestamp", "format": "02-01-06 15:04:05" },
-        { "name": "customeremail", "alias":"customer_email", "type": "email", "seed_type":"db", "format": "email" }
+        { "name": "customeremail", "alias":"customer_email", "type": "email", "seed":true, "format": "email" }
       ]
     }
   ]
