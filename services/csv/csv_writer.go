@@ -23,6 +23,10 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 	var cacheIndex, rowIndex = 0, 1 //cacheindex tracks row in cache, rowindex tracks row in file..
 
 	for _, file := range config.Files {
+		cacheIndex = 0 //reset per file
+		cache = nil
+		rowIndex = 1
+
 		outFile, err := MakeOutputDir(file.Config)
 		if err != nil {
 			log.Error("failed to create output file", "error", err)
@@ -43,10 +47,10 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		}
 
 		if file.CacheConfig != nil {
-			if strings.Contains(file.CacheConfig.Source, ".csv"){
+			if strings.Contains(file.CacheConfig.Source, ".csv") {
 				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
 				cache, _, _, err = ReadCSVAsMap(file.CacheConfig.Source)
-			}else{
+			} else {
 				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 				if err != nil {
 					log.Error("Failed to load cache ", "error", err)
@@ -126,10 +130,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 		var key string
 
 		switch {
-		case field.Type == "":
-			value = field.Value
-
-		case field.SeedType == true:
+		case field.SeedType:
 			if field.Alias != "" {
 				key = field.Alias
 			} else {
@@ -159,6 +160,9 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 
 		case field.Type == "iterator":
 			value = rowIndex
+
+		case field.Type == "":
+			value = field.Value
 
 		default:
 			factory, found := fakers.GetFakerByName(field.Type)

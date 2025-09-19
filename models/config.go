@@ -22,13 +22,13 @@ type Profile struct {
 }
 
 type CacheConfig struct {
-	Hostname  string `json:"hostname"`
-	Port      string `json:"port"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Name      string `json:"name"`
-	Statement string `json:"statement"`
-	Source    string `json:"source"`
+	Hostname  string   `json:"hostname"`
+	Port      string   `json:"port"`
+	Username  string   `json:"username"`
+	Password  string   `json:"password"`
+	Name      string   `json:"name"`
+	Statement string   `json:"statement"`
+	Source    string   `json:"source"`
 	Columns   []string `json: "columns"`
 }
 
@@ -47,7 +47,7 @@ type Field struct {
 	Values     string   `json:"values,omitempty"`
 	Interval   int64    `json:"interval,omitempty"`
 	Target     string   `json:"target,omitempty"`
-	SeedType   bool   `json:"seed,omitempty"`
+	SeedType   bool     `json:"seed,omitempty"`
 }
 
 type Entity struct {
