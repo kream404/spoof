@@ -116,6 +116,7 @@ func ReadCSVAsMap(filepath string) ([]map[string]any, []string, rune, error) {
 		rows = append(rows, row)
 	}
 
+	log.Debug("read from csv", "headers", fmt.Sprint(headers))
 	return rows, headers, delimiter, nil
 }
 
@@ -138,7 +139,6 @@ func makeUniqueHeaders(in []string) []string {
 	}
 	return out
 }
-
 
 func MapFields(records [][]string) ([]models.Field, []string, error) {
 	log.Debug("Mapping fields")
