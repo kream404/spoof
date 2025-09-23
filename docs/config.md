@@ -188,3 +188,93 @@ Copies the value of another field. Can optionally modify numeric inputs by suppl
 
 - `target`: name of the field to mirror.
 - `modifier`: allows transformation (e.g., numeric modification).
+
+---
+## Functions
+Function strings can be used to drive how a supported faker generates its values. This can be used to create psuedo-trends accross the output file
+
+**How it works**
+
+The function string is parsed into a `name` and a `params` map.
+
+A shared sampler produces a normalized value norm ∈ [0,1] for the chosen name (e.g. sin, random, exponential, linear, constant). Time-based functions accept a period.
+
+The normalized value is mapped to the field type:
+
+**Number:** norm → numeric value via MapNormalizedToFloat(norm, params, min, max).
+
+**Timestamp:** norm → duration offset via MapNormalizedToDuration(norm, params, interval, dir) and added to now.
+
+Optional modifiers (amplitude, center, clamp, jitter, etc.) alter sampling or mapping.
+
+
+### Supported functions
+
+`random` — uniform random in [0,1].
+
+`constant` — returns a fixed value (valuenorm in [0,1] or value as an absolute number/duration).
+
+`sin` — sinusoidal wave (time-based); accepts period and phase.
+
+`linear` — repeating linear ramp (sawtooth) over period.
+
+`exponential` — heavy-tailed generator; accepts scale and side.
+
+### Supported modifiers
+
+`period` — seconds (numeric) or duration string (7d, 72h, 1.5d) — used by sin/linear.
+
+`phase` — degrees (for sin).
+
+`dir` — for timestamps: future (default) | past | both. If omitted, a negative interval implies past.
+
+`interval` — base magnitude for timestamps (duration string like 7d or numeric seconds). Top-level interval (field root) is still supported for backwards compatibility. This will be deprecated in the near future.
+
+`amplitude` — multiplier applied to base magnitude or half-range (default 1.0).
+
+`center` — shifts the midpoint:`
+
+`clamp` — "true" (default) or "false". When false, mapped results may exceed [min,max] (for numbers) or the base timestamp window.
+
+
+### Jitter / outlier params
+You can also pass `jitter` paramaters to generate outliers outside of the normal function declaration. The rate of jitter generation can be controlled with the following parameters.
+
+`jitter` — probability (0..1) of producing an outlier on a Generate() call.
+
+`jitter_type` — scale | edge | spike | exponential.
+
+`jitter_amp` — multiplier used by scale and exponential (default 3.0).
+
+### Supported jitter types
+**scale:** multiplies the normalized value (pushes toward an edge).
+
+**edge:** returns exactly 0 or 1.
+
+**spike:** small spikes near an edge (e.g., [0,0.1] or [0.9,1]).
+
+### Function Examples ###
+
+Uniform random timestamp in the past week
+```
+  { "type": "timestamp", "format": "2006-01-02", "function": "random:dir=past,interval=7d" }
+```
+
+All rows same: exactly one year in the past
+```
+  { "type": "timestamp", "format": "2006-01-02", "function": "constant:dir=past,interval=52w" }
+```
+Sin wave mapped to number range, small jitter outliers
+```
+  { "type": "number", "min": 0, "max": 10000, "function": "sin:period=7d,amplitude=1.5,center=50,jitter=0.005,jitter_type=scale,jitter_amp=3" }
+```
+
+Heavy-tailed main generator, allow overshoot beyond bounds
+```
+  { "type": "number", "min": 0, "max": 1000, "function": "exponential:scale=3,side=high,clamp=false" }
+```
+
+Constant 3 days ago (timestamp)
+```
+  { "type": "timestamp", "format":"2006-01-02", "function":"constant:value=3d,dir=past" }
+```
