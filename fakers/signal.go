@@ -108,7 +108,54 @@ func sampleNormalized(fn string, params map[string]string, rng *rand.Rand) float
 			base = 0.0
 		}
 
+	case "exponential":
+		// overall exponential / heavy-tailed function (not just jitter)
+		// params:
+		//   - scale (float) default 1.0
+		//   - side  ("high"|"low"|"both") default "high"
+		scale := parseFloat(params["scale"], 1.0)
+		if scale <= 0 {
+			scale = 1.0
+		}
+		side := strings.ToLower(strings.TrimSpace(params["side"]))
+		if side == "" {
+			side = "high"
+		}
+
+		// draw exponential(1) and scale it
+		var y float64
+		if rng != nil {
+			y = rng.ExpFloat64() * scale
+		} else {
+			y = rand.ExpFloat64() * scale
+		}
+
+		// map y -> (0,1) using 1 - exp(-y) which climbs quickly toward 1 as y grows
+		highVal := 1.0 - math.Exp(-y) // in (0,1)
+
+		switch side {
+		case "low":
+			// mirror to low side
+			base = math.Exp(-y) // in (0,1], small for big y
+		case "both":
+			// choose side randomly (bias toward high by default)
+			var r float64
+			if rng != nil {
+				r = rng.Float64()
+			} else {
+				r = rand.Float64()
+			}
+			if r < 0.5 {
+				base = highVal
+			} else {
+				base = math.Exp(-y)
+			}
+		default: // "high"
+			base = highVal
+		}
+
 	default:
+		// unknown -> fallback to constant 0
 		base = 0.0
 	}
 
