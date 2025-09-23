@@ -254,6 +254,7 @@ You can also pass `jitter` paramaters to generate outliers outside of the normal
 **spike:** small spikes near an edge (e.g., [0,0.1] or [0.9,1]).
 
 ### Function Examples ###
+There is a sample config file demonstrating what can be done with functions in at the `/docs/functions.json` path in this repository as well as the sample fields provided below.
 
 Uniform random timestamp in the past week
 ```
