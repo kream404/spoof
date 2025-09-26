@@ -7,6 +7,7 @@ import (
 
 	"github.com/kream404/spoof/models"
 	csvgen "github.com/kream404/spoof/services/csv"
+
 	// "github.com/kream404/spoof/services/json"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,25 +29,6 @@ func TestGenerateValues_WithFaker(t *testing.T) {
 	assert.Len(t, row, 1)
 	assert.NotEmpty(t, row[0])
 }
-
-// func TestGenerateValues_WithSeed(t *testing.T) {
-// 	entity := models.Entity{
-// 		Fields: []models.Field{
-// 			{Name: "id", SeedType: "db"},
-// 		},
-// 	}
-
-// 	seed := []map[string]any{
-// 		{"id": 42},
-// 	}
-
-// 	rng := rand.New(rand.NewSource(42))
-// 	row, err := csvgen.GenerateValues(entity, seed, 0, 0, rng)
-// 	println(json.ToJSONString(row))
-
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, []string{"42"}, row)
-// }
 
 func TestMakeOutputDir(t *testing.T) {
 	cfg := models.Config{FileName: "test_output.csv"}

@@ -46,6 +46,10 @@ var rootCmd = &cobra.Command{
 			log.Init(slog.LevelInfo)
 		}
 
+		if scaffold && scaffold_name != "" {
+			runScaffold()
+		}
+
 		if extract_path != "" {
 			log.Info("Extracting config file", "path", extract_path)
 			runExtract(cmd, extract_path)
@@ -71,9 +75,6 @@ var rootCmd = &cobra.Command{
 			runGenerateCSV()
 		}
 
-		if scaffold && scaffold_name != "" {
-			runScaffold()
-		}
 	},
 }
 
