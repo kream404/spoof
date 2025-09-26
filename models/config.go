@@ -47,7 +47,8 @@ type Field struct {
 	Values     string   `json:"values,omitempty"`
 	Interval   int64    `json:"interval,omitempty"`
 	Target     string   `json:"target,omitempty"`
-	SeedType   bool     `json:"seed,omitempty"`
+	Seed       bool     `json:"seed,omitempty"`
+	Function   string   `json:"function,omitempty"`
 }
 
 type Entity struct {

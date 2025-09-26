@@ -197,12 +197,23 @@ func DetectType(col []string, header string) (models.Field, error) {
 		return models.Field{Name: header, Type: "iterator"}, nil
 	}
 
-	if ok, set := isRange(col, len(col)); ok {
-		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
-	}
 	if ok, decimals, length := isNumber(v); ok {
 		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
 	}
+
+	if ok, fmtCase, L := isAlphanumeric(col); ok {
+		return models.Field{
+			Name:   header,
+			Type:   "alphanumeric",
+			Format: fmtCase, // "upper" | "lower" | "mixed"
+			Length: L,
+		}, nil
+	}
+
+	if ok, set := isRange(col, len(col)); ok {
+		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
+	}
+
 	return models.Field{Name: header, Type: "unknown"}, nil
 }
 
@@ -278,24 +289,134 @@ func isIterator(col []string) bool {
 	return true
 }
 
+// isRange decides if a column is "categorical with a small set of distinct values".
+// It adapts to file size by allowing up to min(max(ceil(5% of non-empty), 8), 200) distincts.
 func isRange(col []string, rowCount int) (bool, []string) {
-	maxDistinct := int(float64(rowCount) * 0.01)
-	if maxDistinct < 10 {
-		maxDistinct = 10
+	const maxReturn = 500 //TODO: make configurable in extract
+
+	normalize := func(s string) string {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return ""
+		}
+		return strings.Join(strings.Fields(s), " ")
 	}
 
-	set := make(map[string]int)
-	for _, row := range col {
-		set[row]++
-		if len(set) > maxDistinct {
-			return false, nil
+	freq := make(map[string]int, 1024)
+	for _, raw := range col {
+		v := normalize(raw)
+		if v == "" {
+			continue
+		}
+		freq[v]++
+	}
+
+	if len(freq) == 0 {
+		return false, nil
+	}
+
+	// rank by frequency (desc), then lex (asc) for deterministic output
+	type kv struct {
+		k string
+		v int
+	}
+	items := make([]kv, 0, len(freq))
+	for k, v := range freq {
+		items = append(items, kv{k: k, v: v})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].v != items[j].v {
+			return items[i].v > items[j].v
+		}
+		return items[i].k < items[j].k
+	})
+
+	limit := maxReturn
+	if len(items) < limit {
+		limit = len(items)
+	}
+	out := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
+		out = append(out, items[i].k)
+	}
+	return true, out
+}
+
+func isAlphanumeric(col []string) (ok bool, format string, length int) {
+	alphaNumRe := regexp.MustCompile(`^[A-Za-z0-9]+$`)
+
+	type stat struct {
+		upper bool
+		lower bool
+		mixed bool
+	}
+
+	lengthCount := make(map[int]int)
+	var s stat
+	sawAny := false
+
+	for _, v := range col {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			// allow blanks; skip stats
+			continue
+		}
+		if !alphaNumRe.MatchString(v) {
+			return false, "", 0
+		}
+		sawAny = true
+
+		// collect case stats for letters only
+		hasLetter := false
+		allUpper := true
+		allLower := true
+		for _, r := range v {
+			if r >= 'A' && r <= 'Z' {
+				hasLetter = true
+				allLower = false
+			} else if r >= 'a' && r <= 'z' {
+				hasLetter = true
+				allUpper = false
+			}
+		}
+		if hasLetter {
+			if allUpper {
+				s.upper = true
+			} else if allLower {
+				s.lower = true
+			} else {
+				s.mixed = true
+			}
+		}
+
+		lengthCount[len(v)]++
+	}
+
+	if !sawAny {
+		return false, "", 0
+	}
+
+	// decide format
+	switch {
+	case s.mixed || (s.upper && s.lower):
+		format = "mixed"
+	case s.upper:
+		format = "upper"
+	case s.lower:
+		format = "lower"
+	default:
+		// column had digits only; still valid alphanumeric, default to mixed
+		format = "mixed"
+	}
+
+	// pick most common length
+	maxC := -1
+	for L, c := range lengthCount {
+		if c > maxC {
+			maxC = c
+			length = L
 		}
 	}
 
-	unique := make([]string, 0, len(set))
-	for v := range set {
-		unique = append(unique, v)
-	}
-	sort.Strings(unique)
-	return true, unique
+	return true, format, length
 }

@@ -1,0 +1,81 @@
+{
+    "files": [
+      {
+        "config": {
+          "file_name": "functions.csv",
+          "delimiter": ",",
+          "rowcount": "2000000",
+          "include_headers": true
+        },
+        "fields": [
+          {
+            "name": "sequenceid",
+            "type": "iterator"
+          },
+          {
+            "name": "loaddate",
+            "type": "timestamp",
+            "format": "2006-01-02",
+            "function": "constant:dir=past,interval=52w"
+          },
+          {
+            "name": "amount",
+            "type": "number",
+            "format": "2",
+            "min": 1,
+            "max": 5000,
+            "function": "random"
+          },
+          {
+            "name": "trandate_random_week",
+            "type": "timestamp",
+            "format": "2006-01-02",
+            "function": "random:dir=past,interval=7d"
+          },
+          {
+            "name": "trandate_sin_week",
+            "type": "timestamp",
+            "format": "2006-01-02",
+            "function": "sin:period=0.1,dir=past,interval=7d,amplitude=3"
+          },
+          {
+            "name": "trandate_sin_datetime",
+            "type": "timestamp",
+            "format": "2006-01-02T15:04:05",
+            "function": "sin:period=0.1,amplitude=2,phase=45,dir=past,interval=7d"
+          },
+          {
+            "name": "trandate_constant_3days_ago",
+            "type": "timestamp",
+            "format": "2006-01-02",
+            "function": "constant:value=3d,dir=past"
+          },
+          {
+            "name": "amount_sin_week",
+            "type": "number",
+            "format": "2",
+            "min": 0,
+            "max": 5000,
+            "function": "exponential:scale=1,side=high"
+          },
+          {
+            "name": "amount_linear",
+            "type": "number",
+            "format": "2",
+            "min": 500,
+            "max": 5000,
+            "function": "linear:period=1"
+          },
+          {
+            "name": "amount_constant_42",
+            "type": "number",
+            "format": "2",
+            "min": 0,
+            "max": 100,
+            "function": "constant:value=42"
+          }
+        ]
+      }
+    ]
+  }
+  

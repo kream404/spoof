@@ -130,7 +130,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 		var key string
 
 		switch {
-		case field.SeedType:
+		case field.Seed:
 			if field.Alias != "" {
 				key = field.Alias
 			} else {
