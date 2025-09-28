@@ -49,7 +49,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		if file.CacheConfig != nil {
 			if strings.Contains(file.CacheConfig.Source, ".csv") {
 				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
-				cache, _, _, err = ReadCSVAsMap(file.CacheConfig.Source)
+				cache, _, _, _ = ReadCSVAsMap(file.CacheConfig.Source)
 			} else {
 				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
 				if err != nil {
@@ -128,55 +128,72 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 	for _, field := range file.Fields {
 		var value any
 		var key string
+		if field.Alias != "" {
+			key = field.Alias
+		} else {
+			key = field.Name
+		}
 
-		switch {
-		case field.Seed:
-			if field.Alias != "" {
-				key = field.Alias
-			} else {
-				key = field.Name
-			}
-			value = cache[seedIndex][key]
-
-		case field.Type == "reflection":
-			targetValue, ok := generatedFields[field.Target]
-			if !ok {
-				log.Error("Reflection error", "field_name", field.Name)
-				if field.Target == "" {
-					return nil, fmt.Errorf("You must provide a 'target' to use reflection")
+		injected := false
+		if shouldInjectFromSource(field, rng) {
+			if rows, _, _, err := ReadCSVAsMap(field.Source); err != nil {
+				log.Error("Failed to read source CSV; falling back to generation", "source", field.Source, "err", err)
+			} else if len(rows) > 0 {
+				idx := seedIndex % len(rows)
+				if v, ok := rows[idx][key]; ok {
+					value = v
+					injected = true
+					log.Debug("Injecting value from source CSV", "source", field.Source, "field", field.Name, "value", value)
+				} else {
+					log.Warn("Key not found in source row; falling back", "key", key, "field", field.Name, "source", field.Source)
 				}
-				return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 			}
+		}
 
-			value = targetValue
-			if field.Modifier != nil {
-				modifiedValue, err := modifier(targetValue, *field.Modifier)
+		if !injected {
+			switch {
+			case field.Seed:
+				value = cache[seedIndex][key]
+
+			case field.Type == "reflection":
+				targetValue, ok := generatedFields[field.Target]
+				if !ok {
+					log.Error("Reflection error", "field_name", field.Name)
+					if field.Target == "" {
+						return nil, fmt.Errorf("You must provide a 'target' to use reflection")
+					}
+					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+				}
+				value = targetValue
+				if field.Modifier != nil {
+					modifiedValue, err := modifier(targetValue, *field.Modifier)
+					if err != nil {
+						log.Error("modifier ignored: not a valid number", "target", targetValue)
+						return nil, err
+					}
+					value = modifiedValue
+				}
+
+			case field.Type == "iterator":
+				value = rowIndex
+
+			case field.Type == "":
+				value = field.Value
+
+			default:
+				factory, found := fakers.GetFakerByName(field.Type)
+				if !found {
+					return nil, fmt.Errorf("faker not found for type: %s", field.Type)
+				}
+				faker, err := factory(field, rng)
 				if err != nil {
-					log.Error("modifier ignored: not a valid number", "target", targetValue)
-					return nil, err
+					log.Error("Error creating faker", "field_name", field.Name, "type", field.Type)
+					return nil, fmt.Errorf("%w", err)
 				}
-				value = modifiedValue
-			}
-
-		case field.Type == "iterator":
-			value = rowIndex
-
-		case field.Type == "":
-			value = field.Value
-
-		default:
-			factory, found := fakers.GetFakerByName(field.Type)
-			if !found {
-				return nil, fmt.Errorf("faker not found for type: %s", field.Type)
-			}
-			faker, err := factory(field, rng)
-			if err != nil {
-				log.Error("Error creating faker", "field_name", field.Name, "type", field.Type)
-				return nil, fmt.Errorf("%w", err)
-			}
-			value, err = faker.Generate()
-			if err != nil {
-				return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+				value, err = faker.Generate()
+				if err != nil {
+					return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+				}
 			}
 		}
 
@@ -191,6 +208,24 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 		record = append(record, valueStr)
 	}
 	return record, nil
+}
+
+func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
+	if field.Source == "" {
+		return false
+	}
+	// default to 100% if rate is omitted
+	if field.Rate == nil {
+		return true
+	}
+	r := *field.Rate
+	if r <= 0 {
+		return false
+	}
+	if r >= 100 {
+		return true
+	}
+	return rng.Intn(100) < r // 0..99 < r
 }
 
 func stringToSeed(s string) int64 {
