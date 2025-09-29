@@ -139,8 +139,8 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		if shouldInjectFromSource(field, rng) && field.Source != "" && strings.Contains(field.Source, ".csv") {
 			if rows, ok := fieldSources[field.Source]; ok && len(rows) > 0 {
 				idx := seedIndex % len(rows)
-				if v, ok2 := rows[idx][key]; ok2 {
-					value = v
+				if val := rows[idx][key]; val != nil {
+					value = val
 					injected = true
 					log.Debug("Injecting value from preloaded source CSV",
 						"source", field.Source, "field", field.Name, "value", value)
