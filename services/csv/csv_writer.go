@@ -59,9 +59,10 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
+		fieldCaches := preloadFieldSources(file.Fields)
 		rng := CreateRNGSeed(file.Config.Seed)
 		for i := 0; i < file.Config.RowCount; i++ {
-			row, err := GenerateValues(file, cache, rowIndex, cacheIndex, rng)
+			row, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
 			if err != nil {
 				log.Error("Row Error ", "error", err)
 				os.Exit(1)
@@ -121,7 +122,7 @@ func MakeOutputDir(config models.Config) (*os.File, error) {
 	return file, nil
 }
 
-func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
+func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
 	generatedFields := make(map[string]string)
 
@@ -208,6 +209,32 @@ func GenerateValues(file models.Entity, cache []map[string]any, rowIndex int, se
 		record = append(record, valueStr)
 	}
 	return record, nil
+}
+
+// NEW: cache type for per-field CSV sources
+type fieldCache map[string][]map[string]any
+
+func preloadFieldSources(fields []models.Field) fieldCache {
+	fieldCache := make(fieldCache)
+	seen := make(map[string]struct{})
+	for _, f := range fields {
+		if f.Source == "" || !strings.Contains(f.Source, ".csv") {
+			continue
+		}
+		if _, ok := seen[f.Source]; ok {
+			continue
+		}
+		rows, _, _, err := ReadCSVAsMap(f.Source)
+		if err != nil {
+			log.Error("Failed to preload source CSV; will skip injection for this source",
+				"source", f.Source, "err", err)
+			continue
+		}
+		fieldCache[f.Source] = rows
+		seen[f.Source] = struct{}{}
+		log.Debug("Preloaded CSV source", "source", f.Source, "rows", len(rows))
+	}
+	return fieldCache
 }
 
 func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
