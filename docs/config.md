@@ -39,6 +39,13 @@ The output file can also be seeded from an existing CSV file. This works the sam
 }
 ```
 
+Fields can also be seeded with a CSV cache specific to the given field. This is useful for adhoc injection from sources outside of usual operation. The injection can optionally be governed by a `rate` which is the precentage chance of the cache being used. If it misses it will fallback to the generic cache if enabled, and finally to generation logic.
+
+```json
+{ "name": "id", "type": "uuid", "source": "source/id_subset.csv", "rate": "50", "alias": "customerid"}
+```
+
+
 ## Connection Profiles
 Connection profiles can be used to quickly seed data from different environments. Profiles are stored at `~/.config/spoof/profiles.ini` and contain connection variables for a specified environment.
 
