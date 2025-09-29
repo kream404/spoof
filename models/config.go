@@ -49,6 +49,8 @@ type Field struct {
 	Target     string   `json:"target,omitempty"`
 	Seed       bool     `json:"seed,omitempty"`
 	Function   string   `json:"function,omitempty"`
+	Source     string   `json:"source,omitempty"`
+	Rate       *int     `json:"rate,omitempty,string"`
 }
 
 type Entity struct {
