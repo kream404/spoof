@@ -211,7 +211,6 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 	return record, nil
 }
 
-// NEW: cache type for per-field CSV sources
 type fieldCache map[string][]map[string]any
 
 func preloadFieldSources(fields []models.Field) fieldCache {
