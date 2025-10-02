@@ -86,6 +86,17 @@ Any run without a seed will output the seed used in generation to the console, w
 
 ---
 
+## Postprocessing
+A `postprocessing` block can be provided in the json config to allow you to upload files generated directly to an s3 location. In the future this will also support encryption. To authenticate the upload you must be authenticated against the destination account. This will allow the tool to leverage your token in `~/.aws/credentials`. A working example of the config block can be seen below. The file name will be concatenated to the location, landing in a directory at the given location.
+
+```json
+  "postprocess": {
+    "upload": true,
+    "location": "s3://{BUCKET_NAME}/{PATH}/{PREFIX}",
+    "region": "eu-west-2"
+  },
+```
+
 ## Field Types
 
 When configuring your CSV generation, each field in the `fields` array represents a column with specific data logic. The name provided will be the name of the column in the output file.

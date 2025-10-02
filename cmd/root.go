@@ -169,7 +169,7 @@ func loadConfig() error {
 
 		//TODO: fix this so that it merges both caches ? they should be handled individually
 		merged := config.Files[0].CacheConfig.MergeConfig(cacheProfile)
-		log.Debug("Loading csv cache", "source", config.Files[1].CacheConfig.Source, "columns", config.Files[1].CacheConfig.Columns)
+		log.Debug(fmt.Sprint(merged))
 		config.Files[0].CacheConfig = &merged
 	}
 
