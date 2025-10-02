@@ -5,8 +5,11 @@
 ---
 ## Features
 - Deterministic Generation
-- Generate structured CSV files based on JSON config.
-- Optionally seed data from DB
+- Generate structured CSV files based on JSON config
+- Extract JSON config from CSV files
+- Optionally seed data from DB or existing CSV's
+- Direct upload to S3 location
+- Drive number and timestamp generation with functions
 ---
 ## Installation
 
