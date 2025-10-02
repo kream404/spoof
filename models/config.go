@@ -10,6 +10,12 @@ type Config struct {
 	Seed           string `json:"seed,omitempty"`
 }
 
+type Postprocess struct {
+	Upload   bool   `json:"upload,omitempty"`
+	Location string `json:"location"`
+	Region   string `json:"region,omitempty"`
+}
+
 type Profiles struct {
 	Profiles []Profile `json:"profiles"`
 }
@@ -29,7 +35,7 @@ type CacheConfig struct {
 	Name      string   `json:"name"`
 	Statement string   `json:"statement"`
 	Source    string   `json:"source"`
-	Columns   []string `json: "columns"`
+	Columns   []string `json:"columns"`
 }
 
 type Field struct {
@@ -55,6 +61,7 @@ type Field struct {
 
 type Entity struct {
 	Config      Config       `json:"config"`
+	Postprocess Postprocess  `json:"postprocess,omitempty"`
 	CacheConfig *CacheConfig `json:"cache,omitempty"`
 	Fields      []Field      `json:"fields"`
 }
