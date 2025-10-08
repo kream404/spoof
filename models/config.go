@@ -64,6 +64,7 @@ type Entity struct {
 	Postprocess Postprocess  `json:"postprocess,omitempty"`
 	CacheConfig *CacheConfig `json:"cache,omitempty"`
 	Fields      []Field      `json:"fields"`
+	Source      string       `json:"source,omitempty"`
 }
 
 type FileConfig struct {
