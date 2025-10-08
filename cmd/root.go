@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"github.com/go-ini/ini"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
-	"github.com/kream404/spoof/services/json"
+	json_parser "github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -129,23 +130,81 @@ func runScaffold() {
 }
 
 func loadConfig() error {
-	log.Debug("Loading config	", "path", config_path)
-	var err error
-	config, err = json.LoadConfig(config_path)
+	log.Debug("Loading config", "path", config_path)
+
+	raw, err := os.ReadFile(config_path)
 	if err != nil {
-		log.Error("Failed to load config	", "path", config_path)
-		os.Exit(1)
+		return fmt.Errorf("could not read config: %w", err)
+	}
+
+	type bundleFile struct {
+		Source string `json:"source"`
+	}
+	type bundle struct {
+		Files []bundleFile `json:"files"`
+	}
+
+	var b bundle
+	var loaded models.FileConfig
+
+	parseErr := json.Unmarshal(raw, &b)
+	isBundle := false
+	if parseErr == nil && len(b.Files) > 0 {
+		for _, f := range b.Files {
+			if strings.TrimSpace(f.Source) != "" {
+				isBundle = true
+				break
+			}
+		}
+	}
+
+	if isBundle {
+		bundleDir := filepath.Dir(config_path)
+
+		for _, f := range b.Files {
+			src := strings.TrimSpace(f.Source)
+			if src == "" {
+				continue
+			}
+			if !filepath.IsAbs(src) {
+				src = filepath.Join(bundleDir, src)
+			}
+
+			log.Info("Loading referenced config", "source", src)
+			c, err := json_parser.LoadConfig(src)
+			if err != nil {
+				return fmt.Errorf("failed to load referenced config %q: %w", src, err)
+			}
+			loaded.Files = append(loaded.Files, c.Files...)
+		}
+
+		if len(loaded.Files) == 0 {
+			cfg, err := json_parser.LoadConfig(config_path)
+			if err != nil {
+				return fmt.Errorf("no files found from bundle sources and generic load failed: %w", err)
+			}
+			loaded = *cfg
+		}
+	} else {
+		cfg, err := json_parser.LoadConfig(config_path)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+		loaded = *cfg
+	}
+
+	if len(loaded.Files) == 0 {
+		return fmt.Errorf("no files found in configuration")
 	}
 
 	if profile != "" {
-		log.Info("Loading connection profile:", "profile", profile)
+		log.Info("Loading connection profile", "profile", profile)
 		home, _ := os.UserHomeDir()
 		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
 		cfg, err := ini.Load(profilePath)
 		if err != nil {
 			return fmt.Errorf("could not load profile file: %w", err)
 		}
-
 		section := cfg.Section(profile)
 
 		cacheProfile := models.CacheConfig{
@@ -159,20 +218,24 @@ func loadConfig() error {
 			log.Error("Failed to load connection profile", "err", "profile not found")
 			os.Exit(1)
 		}
-		log.Debug("Profile loaded", "profile", profile)
-
 		if cacheProfile.Password == "" {
 			fmt.Print("enter db password: ")
 			input, _ := terminal.ReadPassword(0)
+			fmt.Println()
 			cacheProfile.Password = string(input)
 		}
 
-		//TODO: fix this so that it merges both caches ? they should be handled individually
-		merged := config.Files[0].CacheConfig.MergeConfig(cacheProfile)
-		log.Debug(fmt.Sprint(merged))
-		config.Files[0].CacheConfig = &merged
+		for i := range loaded.Files {
+			if loaded.Files[i].CacheConfig == nil {
+				loaded.Files[i].CacheConfig = &models.CacheConfig{}
+			}
+			merged := loaded.Files[i].CacheConfig.MergeConfig(cacheProfile)
+			loaded.Files[i].CacheConfig = &merged
+		}
+		log.Debug("Profile applied to all files", "count", len(loaded.Files))
 	}
 
+	config = &loaded
 	return nil
 }
 
