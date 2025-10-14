@@ -11,9 +11,15 @@ type Config struct {
 }
 
 type Postprocess struct {
-	Upload   bool   `json:"upload,omitempty"`
-	Location string `json:"location"`
-	Region   string `json:"region,omitempty"`
+	Upload    bool     `json:"upload,omitempty"`
+	Location  string   `json:"location"`
+	Region    string   `json:"region,omitempty"`
+	Schema    string   `json:"schema,omitempty"`
+	Table     string   `json:"table,omitempty"`
+	HasHeader bool     `json:"headers,omitempty"`
+	TrimSpace bool     `json:"trim,omitempty"`
+	Columns   []string `json:"columns,omitempty"`
+	BatchSize int      `json:"batch,string"`
 }
 
 type Profiles struct {

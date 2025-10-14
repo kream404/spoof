@@ -51,7 +51,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 			}
 		}
 
-		if file.CacheConfig != nil {
+		if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
 			if strings.Contains(file.CacheConfig.Source, ".csv") {
 				log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
 				cache, _, _, _ = ReadCSVAsMap(file.CacheConfig.Source)
@@ -108,6 +108,15 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 		}
 
 		outFile.Close()
+
+		if file.Postprocess.Upload && file.Postprocess.Location == "database" {
+			db, _ := database.NewDBConnector().OpenConnection(*file.CacheConfig)
+			rows, err := db.InsertRows(path.Join("output", file.Config.FileName), file)
+			log.Debug("rows inserted", "value", rows)
+			if err != nil {
+				log.Error("failed to insert rows: ", "error", fmt.Sprint(err))
+			}
+		}
 
 		if file.Postprocess.Upload && strings.HasPrefix(file.Postprocess.Location, "s3://") {
 			ctx := context.Background()
