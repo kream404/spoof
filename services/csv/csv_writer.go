@@ -126,7 +126,7 @@ func GenerateCSV(config models.FileConfig, outputPath string) error {
 					return fmt.Errorf("failed to init S3 connector: %w", err)
 				}
 
-				dest, err := joinS3URI(file.Postprocess.Location, file.Config.FileName)
+				dest, err := joinS3URI(file.Postprocess.Location, effectiveName)
 				if err != nil {
 					return err
 				}
