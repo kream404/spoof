@@ -33,7 +33,7 @@ func TestGenerateValues_WithFaker(t *testing.T) {
 func TestMakeOutputDir(t *testing.T) {
 	cfg := models.Config{FileName: "test_output.csv"}
 
-	file, _, err := csvgen.MakeOutputDir(cfg)
+	file, _, err := csvgen.MakeOutputDir(cfg.FileName)
 	assert.NoError(t, err)
 	assert.FileExists(t, file.Name())
 

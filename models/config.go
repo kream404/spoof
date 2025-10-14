@@ -4,6 +4,7 @@ type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
 	RowCount       int    `json:"rowcount,string"`
+	FileCount      int    `json:"file_count,omitempty"`
 	IncludeHeaders bool   `json:"include_headers"`
 	Header         string `json:"header,omitempty"`
 	Footer         string `json:"footer,omitempty"`
