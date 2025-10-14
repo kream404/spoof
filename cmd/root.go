@@ -58,10 +58,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		if generate {
-			log.Info("============================================")
-			log.Info("Generating new config file")
-			log.Info("============================================")
-
 			runGenerate(cmd)
 			return
 		}
@@ -72,8 +68,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if config != nil {
-			log.Info("Generating CSV...")
-			runGenerateCSV()
+			ProcessFiles()
 		}
 
 	},
@@ -113,8 +108,8 @@ func runGenerate(cmd *cobra.Command) {
 	generateCmd.Run(cmd, genArgs)
 }
 
-func runGenerateCSV() {
-	csv.GenerateCSV(*config, "./output/output.csv")
+func ProcessFiles() {
+	csv.ProcessFiles(*config)
 }
 
 func runScaffold() {
@@ -198,7 +193,7 @@ func loadConfig() error {
 	}
 
 	if profile != "" {
-		log.Info("Loading connection profile", "profile", profile)
+		log.Info("Using connection profile", "profile", profile)
 		home, _ := os.UserHomeDir()
 		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
 		cfg, err := ini.Load(profilePath)
