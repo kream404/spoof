@@ -540,12 +540,14 @@ func validateEntityConfig(file models.Entity) error {
 			missing = append(missing, "postprocess.location")
 		}
 
-		if file.Postprocess.Key == "" {
-			missing = append(missing, "postprocess.key")
-		}
+		if strings.EqualFold(file.Postprocess.Operation, "delete") {
+			if file.Postprocess.Key == "" {
+				missing = append(missing, "postprocess.key")
+			}
 
-		if file.Postprocess.Type == "" {
-			missing = append(missing, "postprocess.type")
+			if file.Postprocess.Type == "" {
+				missing = append(missing, "postprocess.type")
+			}
 		}
 	}
 
