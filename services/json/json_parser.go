@@ -9,7 +9,6 @@ import (
 )
 
 func LoadConfig(filepath string) (*models.FileConfig, error) {
-	log.Debug("Loading config file	", "path", filepath)
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, err

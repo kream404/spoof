@@ -4,7 +4,7 @@
       "config": {
         "file_name": "testfile1.csv",
         "delimiter": "|",
-        "rowcount": "1000",
+        "row_count": "1000",
         "include_headers": true
       },
       "cache": {
@@ -51,7 +51,7 @@
       "config": {
         "file_name": "testfile2.csv",
         "delimiter": "|",
-        "rowcount": "1000",
+        "row_count": 1000,
         "include_headers": true
       },
       "cache": {

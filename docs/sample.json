@@ -3,7 +3,7 @@
       "config": {
         "file_name": "testfile.csv",
         "delimiter": "|",
-        "rowcount": "5",
+        "row_count": 5,
         "include_headers": true,
         "seed":"4d810b2c-f1ca-46dc-9240-b7b19f1fc46e"
       },

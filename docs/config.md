@@ -76,7 +76,7 @@ The file config can optionally be provisioned with a seed. This will be the seed
 "config": {
   "file_name": "testfile.csv",
   "delimiter": "|",
-  "rowcount": "6",
+  "row_count": 6,
   "include_headers": true,
   "seed": "47e7f672-9c3d-4dd4-a151-6f5fd67f236f"
 },
@@ -91,7 +91,7 @@ A `postprocessing` block can be provided in the json config to allow you to uplo
 
 ```json
   "postprocess": {
-    "upload": true,
+    "enabled": true,
     "location": "s3://{BUCKET_NAME}/{PATH}/{PREFIX}",
     "region": "eu-west-2"
   },

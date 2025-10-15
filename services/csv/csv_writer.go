@@ -12,6 +12,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
 
 	"github.com/google/uuid"
 	"github.com/kream404/spoof/fakers"
@@ -22,125 +25,260 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func GenerateCSV(config models.FileConfig, outputPath string) error {
-	var cache []map[string]any
-	var cacheIndex, rowIndex = 0, 1
-
+func ProcessFiles(config models.FileConfig, force bool) error {
+	ctx := context.Background()
 	for _, file := range config.Files {
-
-		//if not provided, default to 1
 		if file.Config.FileCount <= 0 {
 			file.Config.FileCount = 1
 		}
 
 		for i := 0; i < file.Config.FileCount; i++ {
-			cacheIndex = 0
-			cache = nil
-			rowIndex = 1
+			iterFile := file
+			iterFile.Config.FileName = withIndexSuffix(file.Config.FileName, i, file.Config.FileCount)
 
-			effectiveName := withIndexSuffix(file.Config.FileName, i, file.Config.FileCount)
-			outFile, localPath, err := MakeOutputDir(effectiveName)
-
-			if err != nil {
-				log.Error("failed to create output file", "error", err)
+			if err := processOneFile(ctx, iterFile, "output", force); err != nil {
+				log.Error("file processing failed", "file", iterFile.Config.FileName, "err", err)
 				return err
-			}
-
-			tempWriter := &strings.Builder{}
-			writer := csv.NewWriter(tempWriter)
-			writer.Comma = rune(file.Config.Delimiter[0])
-
-			if file.Config.IncludeHeaders {
-				var headers []string
-				for _, field := range file.Fields {
-					headers = append(headers, field.Name)
-				}
-				if err := writer.Write(headers); err != nil {
-					return fmt.Errorf("CSV Write Error (headers): %v", err)
-				}
-			}
-
-			if file.CacheConfig != nil {
-				if strings.Contains(file.CacheConfig.Source, ".csv") {
-					log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
-					cache, _, _, _ = ReadCSVAsMap(file.CacheConfig.Source)
-				} else {
-					cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
-					if err != nil {
-						log.Error("Failed to load cache ", "error", err)
-						os.Exit(1)
-					}
-				}
-			}
-
-			fieldCaches := preloadFieldSources(file.Fields)
-			rng := CreateRNGSeed(file.Config.Seed)
-			for i := 0; i < file.Config.RowCount; i++ {
-				row, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
-				if err != nil {
-					log.Error("Row Error ", "error", err)
-					os.Exit(1)
-				}
-				if err := writer.Write(row); err != nil {
-					log.Error("CSV write error ", "error", err)
-					os.Exit(1)
-				}
-
-				cacheIndex++
-				rowIndex++
-				if len(cache) > 0 && cacheIndex >= len(cache) {
-					cacheIndex = 0
-				}
-			}
-
-			writer.Flush()
-			if err := writer.Error(); err != nil {
-				log.Error("CSV write error ", "error", err)
-				os.Exit(1)
-			}
-
-			finalWriter := bufio.NewWriter(outFile)
-
-			if file.Config.Header != "" {
-				_, _ = finalWriter.WriteString(file.Config.Header + "\n")
-			}
-
-			_, _ = finalWriter.WriteString(tempWriter.String())
-
-			if file.Config.Footer != "" {
-				_, _ = finalWriter.WriteString(file.Config.Footer + "\n")
-			}
-
-			if err := finalWriter.Flush(); err != nil {
-				log.Error("Failed to flush final writer", "error", err)
-				os.Exit(1)
-			}
-
-			outFile.Close()
-
-			if file.Postprocess.Upload && strings.HasPrefix(file.Postprocess.Location, "s3://") {
-				ctx := context.Background()
-
-				s3, err := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, file.Postprocess.Region)
-				if err != nil {
-					return fmt.Errorf("failed to init S3 connector: %w", err)
-				}
-
-				dest, err := joinS3URI(file.Postprocess.Location, effectiveName)
-				if err != nil {
-					return err
-				}
-
-				if _, err := s3.UploadFile(ctx, dest, localPath); err != nil {
-					log.Error("Failed to upload file to S3", "dest", dest, "error", err)
-					return err
-				}
-
-				log.Info("Uploaded CSV to S3", "uri", dest)
 			}
 		}
 	}
 	return nil
+}
+
+func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool) error {
+	if err := validateEntityConfig(file); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	if strings.EqualFold(file.Postprocess.Operation, "delete") && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
+
+		if !force {
+			log.Warn("You are attempting to delete rows",
+				"file", file.Config.FileName,
+				"host", file.CacheConfig.Hostname,
+				"table", file.Postprocess.Table,
+				"schema", file.Postprocess.Schema,
+			)
+			log.Warn("To carry out this action pass `--force` flag")
+			return nil
+		}
+
+		rows, err := Delete(ctx, file)
+		if err != nil {
+			return fmt.Errorf("failed to delete rows for file %q: %w", file.Config.FileName, err)
+		}
+		log.Info("Delete completed", "table", file.Postprocess.Table, "rows", rows)
+		return nil
+	}
+
+	localPath, err := generateCSV(file, outDir)
+	if err != nil {
+		return fmt.Errorf("failed to generate CSV for %q: %w", file.Config.FileName, err)
+	}
+
+	if err := Insert(ctx, file, localPath); err != nil {
+		return fmt.Errorf("database insert failed for %q: %w", file.Config.FileName, err)
+	}
+
+	if err := UploadToS3(ctx, file, localPath); err != nil {
+		return fmt.Errorf("S3 upload failed for %q: %w", file.Config.FileName, err)
+	}
+
+	return nil
+}
+
+func Delete(ctx context.Context, file models.Entity) (int, error) {
+	pp := file.Postprocess
+	if !pp.Enabled || !strings.EqualFold(pp.Location, "database") || !strings.EqualFold(pp.Operation, "delete") {
+		return 0, nil
+	}
+
+	csvPath := file.Config.FileName
+
+	log.Info("delete from", "schema", pp.Schema, "table", pp.Table, "csv", csvPath)
+
+	db, err := database.NewDBConnector().OpenConnection(*file.CacheConfig)
+	if err != nil {
+		return 0, fmt.Errorf("open db for delete: %w", err)
+	}
+
+	rows, err := db.DeleteRowsByKeyFromFile(csvPath, file)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete rows: %w", err)
+	}
+	return rows, nil
+}
+
+func generateCSV(file models.Entity, outDir string) (string, error) {
+	var cache []map[string]any
+	var cacheIndex, rowIndex = 0, 1
+
+	if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
+		if strings.Contains(file.CacheConfig.Source, ".csv") {
+			log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
+			cache, _, _, _ = ReadCSVAsMap(file.CacheConfig.Source)
+		} else {
+			var err error
+			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
+			if err != nil {
+				return "", fmt.Errorf("load cache: %w", err)
+			}
+		}
+	}
+
+	outFile, localPath, err := makeOutputFile(outDir, file.Config.FileName)
+	if err != nil {
+		return "", fmt.Errorf("create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	tempWriter := &strings.Builder{}
+	writer := csv.NewWriter(tempWriter)
+	if d := file.Config.Delimiter; len(d) > 0 && d[0] != 0 {
+		writer.Comma = rune(d[0])
+	}
+
+	// headers
+	if file.Config.IncludeHeaders {
+		var headers []string
+		for _, field := range file.Fields {
+			headers = append(headers, field.Name)
+		}
+		if err := writer.Write(headers); err != nil {
+			return "", fmt.Errorf("CSV Write Error (headers): %v", err)
+		}
+	}
+
+	fieldCaches := preloadFieldSources(file.Fields)
+	rng, seed := CreateRNGSeed(file.Config.Seed)
+
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = fmt.Sprintf(" Generating %s (%d rows)...", file.Config.FileName, file.Config.RowCount)
+	s.Start()
+
+	for i := 0; i < file.Config.RowCount; i++ {
+		row, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
+		if err != nil {
+			s.Stop()
+			return "", fmt.Errorf("generate row: %w", err)
+		}
+		if err := writer.Write(row); err != nil {
+			s.Stop()
+			return "", fmt.Errorf("CSV write row: %w", err)
+		}
+
+		cacheIndex++
+		rowIndex++
+		if len(cache) > 0 && cacheIndex >= len(cache) {
+			cacheIndex = 0
+		}
+
+		if i%500 == 0 {
+			s.Suffix = fmt.Sprintf(" Generating %s... (%d/%d)", file.Config.FileName, i, file.Config.RowCount)
+		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		s.Stop()
+		return "", fmt.Errorf("CSV flush: %w", err)
+	}
+
+	finalWriter := bufio.NewWriter(outFile)
+	if file.Config.Header != "" {
+		_, _ = finalWriter.WriteString(file.Config.Header + "\n")
+	}
+	_, _ = finalWriter.WriteString(tempWriter.String())
+	if file.Config.Footer != "" {
+		_, _ = finalWriter.WriteString(file.Config.Footer + "\n")
+	}
+
+	if err := finalWriter.Flush(); err != nil {
+		s.Stop()
+		return "", fmt.Errorf("flush final writer: %w", err)
+	}
+
+	s.Stop()
+	log.Info("CSV generated", "path", localPath, "seed", seed)
+	return localPath, nil
+}
+
+func Insert(ctx context.Context, file models.Entity, localPath string) error {
+	pp := file.Postprocess
+	if !pp.Enabled {
+		return nil
+	}
+	if !strings.EqualFold(pp.Location, "database") {
+		return nil
+	}
+	if !strings.EqualFold(pp.Operation, "insert") {
+		return nil
+	}
+
+	db, err := database.NewDBConnector().OpenConnection(*file.CacheConfig)
+	if err != nil {
+		return fmt.Errorf("open db for insert: %w", err)
+	}
+
+	rows, ierr := db.InsertRows(localPath, file)
+	log.Debug("rows inserted", "value", rows)
+	if ierr != nil {
+		return fmt.Errorf("failed to insert rows: %w", ierr)
+	}
+	return nil
+}
+
+func UploadToS3(ctx context.Context, file models.Entity, localPath string) error {
+	pp := file.Postprocess
+	if !pp.Enabled {
+		return nil
+	}
+	if !strings.HasPrefix(pp.Location, "s3://") {
+		return nil
+	}
+
+	s3, err := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, pp.Region)
+	if err != nil {
+		return fmt.Errorf("init S3 connector: %w", err)
+	}
+
+	dest, err := joinS3URI(pp.Location, file.Config.FileName)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s3.UploadFile(ctx, dest, localPath); err != nil {
+		return fmt.Errorf("upload to S3: %w", err)
+	}
+
+	log.Info("Uploaded CSV to S3", "uri", dest)
+	return nil
+}
+
+func makeOutputFile(baseDir, fileName string) (*os.File, string, error) {
+	if strings.TrimSpace(baseDir) == "" {
+		baseDir = "output"
+	}
+
+	var outputFile string
+	if strings.HasPrefix(fileName, "s3://") {
+		base := filepath.Base(strings.TrimRight(fileName, "/"))
+		if base == "" || base == "." || base == "/" {
+			base = "output.csv"
+		}
+		outputFile = filepath.Join(baseDir, base)
+	} else {
+		outputFile = filepath.Join(baseDir, fileName)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(outputFile), os.ModePerm); err != nil {
+		return nil, "", err
+	}
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return nil, "", err
+	}
+	return file, outputFile, nil
 }
 
 func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
@@ -283,7 +421,7 @@ func stringToSeed(s string) int64 {
 	return int64(h.Sum64())
 }
 
-func CreateRNGSeed(seed_in string) *rand.Rand {
+func CreateRNGSeed(seed_in string) (*rand.Rand, string) {
 	var s string
 	var seed int64
 	if seed_in != "" {
@@ -291,12 +429,9 @@ func CreateRNGSeed(seed_in string) *rand.Rand {
 	} else {
 		s = uuid.NewString()
 	}
-	log.Info("============================================")
-	log.Info("", "seed", s)
-	log.Info("============================================")
 
 	seed = stringToSeed(s)
-	return rand.New(rand.NewSource(seed))
+	return rand.New(rand.NewSource(seed)), s
 }
 
 func modifier(raw string, modifier float64) (string, error) {
@@ -314,9 +449,21 @@ func modifier(raw string, modifier float64) (string, error) {
 	return modifiedValue.StringFixed(int32(decimals)), nil
 }
 
-func MakeOutputDir(fileName string) (*os.File, string, error) {
-	outputFile := filepath.Join("output", fileName)
-	if err := os.MkdirAll("output", os.ModePerm); err != nil {
+func MakeOutputDir(config models.Config) (*os.File, string, error) {
+	outputDir := "output"
+	var outputFile string
+
+	if strings.HasPrefix(config.FileName, "s3://") {
+		base := filepath.Base(strings.TrimRight(config.FileName, "/"))
+		if base == "" || base == "." || base == "/" {
+			base = "output.csv"
+		}
+		outputFile = filepath.Join(outputDir, base)
+	} else {
+		outputFile = filepath.Join(outputDir, config.FileName)
+	}
+
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		return nil, "", err
 	}
 
@@ -341,10 +488,72 @@ func withIndexSuffix(name string, i, count int) string {
 	if count <= 1 {
 		return name
 	}
+
 	ext := filepath.Ext(name) // ".csv"
 	base := strings.TrimSuffix(name, ext)
+
 	if ext == "" {
 		return fmt.Sprintf("%s_%d", base, i+1)
 	}
+
 	return fmt.Sprintf("%s_%d%s", base, i+1, ext)
+
+}
+
+func validateEntityConfig(file models.Entity) error {
+	missing := []string{}
+
+	if file.Config.FileName == "" {
+		missing = append(missing, "config.fileName")
+	}
+
+	if file.Config.Delimiter == "" {
+		missing = append(missing, "config.delimiter")
+	}
+
+	// Database checks for insert/delete
+	if file.Postprocess.Enabled && strings.EqualFold(file.Postprocess.Location, "database") {
+		if file.CacheConfig == nil {
+			missing = append(missing, "cacheConfig")
+		} else {
+			if file.CacheConfig.Hostname == "" {
+				missing = append(missing, "cacheConfig.hostname")
+			}
+			if file.CacheConfig.Name == "" {
+				missing = append(missing, "cacheConfig.name")
+			}
+		}
+
+		if file.Postprocess.Table == "" {
+			missing = append(missing, "postprocess.table")
+		}
+
+		if file.Postprocess.Operation == "" {
+			missing = append(missing, "postprocess.operation")
+		}
+
+		if file.Postprocess.Schema == "" {
+			missing = append(missing, "postprocess.schema")
+		}
+
+		if file.Postprocess.Location == "" {
+			missing = append(missing, "postprocess.location")
+		}
+
+		if strings.EqualFold(file.Postprocess.Operation, "delete") {
+			if file.Postprocess.Key == "" {
+				missing = append(missing, "postprocess.key")
+			}
+
+			if file.Postprocess.Type == "" {
+				missing = append(missing, "postprocess.type")
+			}
+		}
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("missing config: %s", strings.Join(missing, ", "))
+	}
+
+	return nil
 }

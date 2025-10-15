@@ -27,6 +27,7 @@ var (
 	scaffold_name string
 	profile       string
 	version       bool
+	force         bool
 	verbose       bool
 	generate      bool
 	extract_path  string
@@ -58,10 +59,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		if generate {
-			log.Info("============================================")
-			log.Info("Generating new config file")
-			log.Info("============================================")
-
 			runGenerate(cmd)
 			return
 		}
@@ -72,8 +69,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if config != nil {
-			log.Info("Generating CSV...")
-			runGenerateCSV()
+			ProcessFiles(force)
 		}
 
 	},
@@ -113,8 +109,8 @@ func runGenerate(cmd *cobra.Command) {
 	generateCmd.Run(cmd, genArgs)
 }
 
-func runGenerateCSV() {
-	csv.GenerateCSV(*config, "./output/output.csv")
+func ProcessFiles(force bool) {
+	csv.ProcessFiles(*config, force)
 }
 
 func runScaffold() {
@@ -198,7 +194,7 @@ func loadConfig() error {
 	}
 
 	if profile != "" {
-		log.Info("Loading connection profile", "profile", profile)
+		log.Info("Using connection profile", "profile", profile)
 		home, _ := os.UserHomeDir()
 		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
 		cfg, err := ini.Load(profilePath)
@@ -241,6 +237,7 @@ func loadConfig() error {
 
 func init() {
 	rootCmd.Flags().BoolVarP(&version, "version", "v", false, "show cli version")
+	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "allow destructive operation")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
 	rootCmd.Flags().BoolVarP(&generate, "generate", "g", false, "generate a new config file")
 	rootCmd.Flags().StringVarP(&extract_path, "extract", "e", "", "extract config file from csv")
