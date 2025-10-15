@@ -12,6 +12,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
 
 	"github.com/google/uuid"
 	"github.com/kream404/spoof/fakers"
@@ -44,7 +47,7 @@ func ProcessFiles(config models.FileConfig, force bool) error {
 
 func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool) error {
 	if err := validateEntityConfig(file); err != nil {
-		return fmt.Errorf("configuration error: %w", err)
+		return fmt.Errorf("%w", err)
 	}
 
 	if strings.EqualFold(file.Postprocess.Operation, "delete") && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
@@ -146,33 +149,42 @@ func generateCSV(file models.Entity, outDir string) (string, error) {
 		}
 	}
 
-	// field sources
 	fieldCaches := preloadFieldSources(file.Fields)
 	rng, seed := CreateRNGSeed(file.Config.Seed)
 
-	// rows
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = fmt.Sprintf(" Generating %s (%d rows)...", file.Config.FileName, file.Config.RowCount)
+	s.Start()
+
 	for i := 0; i < file.Config.RowCount; i++ {
 		row, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
 		if err != nil {
+			s.Stop()
 			return "", fmt.Errorf("generate row: %w", err)
 		}
 		if err := writer.Write(row); err != nil {
+			s.Stop()
 			return "", fmt.Errorf("CSV write row: %w", err)
 		}
+
 		cacheIndex++
 		rowIndex++
 		if len(cache) > 0 && cacheIndex >= len(cache) {
 			cacheIndex = 0
 		}
+
+		if i%500 == 0 {
+			s.Suffix = fmt.Sprintf(" Generating %s... (%d/%d)", file.Config.FileName, i, file.Config.RowCount)
+		}
 	}
 
 	writer.Flush()
 	if err := writer.Error(); err != nil {
+		s.Stop()
 		return "", fmt.Errorf("CSV flush: %w", err)
 	}
 
 	finalWriter := bufio.NewWriter(outFile)
-
 	if file.Config.Header != "" {
 		_, _ = finalWriter.WriteString(file.Config.Header + "\n")
 	}
@@ -180,10 +192,13 @@ func generateCSV(file models.Entity, outDir string) (string, error) {
 	if file.Config.Footer != "" {
 		_, _ = finalWriter.WriteString(file.Config.Footer + "\n")
 	}
+
 	if err := finalWriter.Flush(); err != nil {
+		s.Stop()
 		return "", fmt.Errorf("flush final writer: %w", err)
 	}
 
+	s.Stop()
 	log.Info("CSV generated", "path", localPath, "seed", seed)
 	return localPath, nil
 }
@@ -240,10 +255,6 @@ func UploadToS3(ctx context.Context, file models.Entity, localPath string) error
 	return nil
 }
 
-// ---------------------------
-// Small utilities (unchanged behavior, but cleaner)
-// ---------------------------
-
 func makeOutputFile(baseDir, fileName string) (*os.File, string, error) {
 	if strings.TrimSpace(baseDir) == "" {
 		baseDir = "output"
@@ -269,20 +280,6 @@ func makeOutputFile(baseDir, fileName string) (*os.File, string, error) {
 	}
 	return file, outputFile, nil
 }
-
-// ===========================
-// Everything below here is your existing code (GenerateValues, preloadFieldSources, etc.)
-// I kept them as-is to avoid churn.
-// ===========================
-
-/* keep your existing:
-   - GenerateValues
-   - preloadFieldSources
-   - shouldInjectFromSource
-   - stringToSeed
-   - CreateRNGSeed
-   - modifier
-*/
 
 func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
 	var record []string
@@ -542,10 +539,18 @@ func validateEntityConfig(file models.Entity) error {
 		if file.Postprocess.Location == "" {
 			missing = append(missing, "postprocess.location")
 		}
+
+		if file.Postprocess.Key == "" {
+			missing = append(missing, "postprocess.key")
+		}
+
+		if file.Postprocess.Type == "" {
+			missing = append(missing, "postprocess.type")
+		}
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("invalid config for %q — missing: %s", file.Config.FileName, strings.Join(missing, ", "))
+		return fmt.Errorf("missing config: %s", strings.Join(missing, ", "))
 	}
 
 	return nil

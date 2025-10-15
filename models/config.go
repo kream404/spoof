@@ -3,7 +3,7 @@ package models
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
-	RowCount       int    `json:"rowcount,string"`
+	RowCount       int    `json:"row_count"`
 	FileCount      int    `json:"file_count,omitempty"`
 	IncludeHeaders bool   `json:"include_headers"`
 	Header         string `json:"header,omitempty"`
