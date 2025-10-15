@@ -301,8 +301,6 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				if val := rows[idx][key]; val != nil {
 					value = val
 					injected = true
-					log.Debug("Injecting value from preloaded source CSV",
-						"source", field.Source, "field", field.Name, "value", value)
 				} else {
 					log.Warn("Key not found in preloaded source row; falling back",
 						"key", key, "field", field.Name, "source", field.Source)
