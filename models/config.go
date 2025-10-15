@@ -3,7 +3,7 @@ package models
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
-	RowCount       int    `json:"rowcount,string"`
+	RowCount       int    `json:"row_count"`
 	FileCount      int    `json:"file_count,omitempty"`
 	IncludeHeaders bool   `json:"include_headers"`
 	Header         string `json:"header,omitempty"`
@@ -12,9 +12,18 @@ type Config struct {
 }
 
 type Postprocess struct {
-	Upload   bool   `json:"upload,omitempty"`
-	Location string `json:"location"`
-	Region   string `json:"region,omitempty"`
+	Enabled   bool     `json:"enabled,omitempty"`
+	Operation string   `json:"operation,omitempty"`
+	Location  string   `json:"location"`
+	Region    string   `json:"region,omitempty"`
+	Schema    string   `json:"schema,omitempty"`
+	Table     string   `json:"table,omitempty"`
+	Key       string   `json:"key,omitempty"`
+	Type      string   `json:"type,omitempty"`
+	HasHeader bool     `json:"headers,omitempty"`
+	TrimSpace bool     `json:"trim,omitempty"`
+	Columns   []string `json:"columns,omitempty"`
+	BatchSize int      `json:"batch,string"`
 }
 
 type Profiles struct {

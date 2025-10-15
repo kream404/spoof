@@ -188,7 +188,7 @@ func DetectType(col []string, header string) (models.Field, error) {
 	}
 
 	if ok, layout := isTimestamp(v); ok {
-		return models.Field{Name: header, Type: "timestamp", Format: layout}, nil
+		return models.Field{Name: header, Type: "timestamp", Format: layout, Function: "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale"}, nil
 	}
 	if isEmail(v) {
 		return models.Field{Name: header, Type: "email"}, nil
@@ -198,7 +198,13 @@ func DetectType(col []string, header string) (models.Field, error) {
 	}
 
 	if ok, decimals, length := isNumber(v); ok {
-		return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 5000}, nil
+		if length > 0 {
+			return models.Field{Name: header, Type: "number", Length: length}, nil
+		}
+		if decimals == 2 {
+			return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 500, Function: "sin:period=0.01,amplitude=1.5,center=50,jitter=0.005,jitter_type=scale,jitter_amp=3"}, nil
+		}
+		return models.Field{Name: header, Type: "number"}, nil
 	}
 
 	if ok, fmtCase, L := isAlphanumeric(col); ok {
