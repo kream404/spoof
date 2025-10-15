@@ -43,36 +43,42 @@ func ProcessFiles(config models.FileConfig, force bool) error {
 }
 
 func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool) error {
-	if !force {
-		log.Warn("You are attempting to delete rows", "file", file.Config.FileName, "host", file.CacheConfig.Hostname, "table", file.Postprocess.Table, "schema", file.Postprocess.Schema)
-		log.Warn("To carry out this action pass `--force` flag")
-
-		return nil
+	if err := validateEntityConfig(file); err != nil {
+		return fmt.Errorf("configuration error: %w", err)
 	}
+
 	if strings.EqualFold(file.Postprocess.Operation, "delete") && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
+
+		if !force {
+			log.Warn("You are attempting to delete rows",
+				"file", file.Config.FileName,
+				"host", file.CacheConfig.Hostname,
+				"table", file.Postprocess.Table,
+				"schema", file.Postprocess.Schema,
+			)
+			log.Warn("To carry out this action pass `--force` flag")
+			return nil
+		}
+
 		rows, err := Delete(ctx, file)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete rows for file %q: %w", file.Config.FileName, err)
 		}
-		log.Debug("rows deleted", "count", rows)
-		log.Info("Delete completed", "table", file.Postprocess.Table)
+		log.Info("Delete completed", "table", file.Postprocess.Table, "rows", rows)
 		return nil
 	}
 
-	// 2) Generate CSV to disk
 	localPath, err := generateCSV(file, outDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate CSV for %q: %w", file.Config.FileName, err)
 	}
 
-	// 3) Optional post-insert to DB
 	if err := Insert(ctx, file, localPath); err != nil {
-		return err
+		return fmt.Errorf("database insert failed for %q: %w", file.Config.FileName, err)
 	}
 
-	// 4) Optional post-upload to S3
 	if err := UploadToS3(ctx, file, localPath); err != nil {
-		return err
+		return fmt.Errorf("S3 upload failed for %q: %w", file.Config.FileName, err)
 	}
 
 	return nil
@@ -495,4 +501,52 @@ func withIndexSuffix(name string, i, count int) string {
 
 	return fmt.Sprintf("%s_%d%s", base, i+1, ext)
 
+}
+
+func validateEntityConfig(file models.Entity) error {
+	missing := []string{}
+
+	if file.Config.FileName == "" {
+		missing = append(missing, "config.fileName")
+	}
+
+	if file.Config.Delimiter == "" {
+		missing = append(missing, "config.delimiter")
+	}
+
+	// Database checks for insert/delete
+	if file.Postprocess.Enabled && strings.EqualFold(file.Postprocess.Location, "database") {
+		if file.CacheConfig == nil {
+			missing = append(missing, "cacheConfig")
+		} else {
+			if file.CacheConfig.Hostname == "" {
+				missing = append(missing, "cacheConfig.hostname")
+			}
+			if file.CacheConfig.Name == "" {
+				missing = append(missing, "cacheConfig.name")
+			}
+		}
+
+		if file.Postprocess.Table == "" {
+			missing = append(missing, "postprocess.table")
+		}
+
+		if file.Postprocess.Operation == "" {
+			missing = append(missing, "postprocess.operation")
+		}
+
+		if file.Postprocess.Schema == "" {
+			missing = append(missing, "postprocess.schema")
+		}
+
+		if file.Postprocess.Location == "" {
+			missing = append(missing, "postprocess.location")
+		}
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("invalid config for %q — missing: %s", file.Config.FileName, strings.Join(missing, ", "))
+	}
+
+	return nil
 }
