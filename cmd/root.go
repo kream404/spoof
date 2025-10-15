@@ -27,6 +27,7 @@ var (
 	scaffold_name string
 	profile       string
 	version       bool
+	force         bool
 	verbose       bool
 	generate      bool
 	extract_path  string
@@ -68,7 +69,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if config != nil {
-			ProcessFiles()
+			ProcessFiles(force)
 		}
 
 	},
@@ -108,8 +109,8 @@ func runGenerate(cmd *cobra.Command) {
 	generateCmd.Run(cmd, genArgs)
 }
 
-func ProcessFiles() {
-	csv.ProcessFiles(*config)
+func ProcessFiles(force bool) {
+	csv.ProcessFiles(*config, force)
 }
 
 func runScaffold() {
@@ -236,6 +237,7 @@ func loadConfig() error {
 
 func init() {
 	rootCmd.Flags().BoolVarP(&version, "version", "v", false, "show cli version")
+	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "allow destructive operation")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
 	rootCmd.Flags().BoolVarP(&generate, "generate", "g", false, "generate a new config file")
 	rootCmd.Flags().StringVarP(&extract_path, "extract", "e", "", "extract config file from csv")

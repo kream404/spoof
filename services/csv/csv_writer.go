@@ -22,7 +22,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func ProcessFiles(config models.FileConfig) error {
+func ProcessFiles(config models.FileConfig, force bool) error {
 	ctx := context.Background()
 	for _, file := range config.Files {
 		if file.Config.FileCount <= 0 {
@@ -33,7 +33,7 @@ func ProcessFiles(config models.FileConfig) error {
 			iterFile := file
 			iterFile.Config.FileName = withIndexSuffix(file.Config.FileName, i, file.Config.FileCount)
 
-			if err := processOneFile(ctx, iterFile, "output"); err != nil {
+			if err := processOneFile(ctx, iterFile, "output", force); err != nil {
 				log.Error("file processing failed", "file", iterFile.Config.FileName, "err", err)
 				return err
 			}
@@ -42,12 +42,14 @@ func ProcessFiles(config models.FileConfig) error {
 	return nil
 }
 
-func processOneFile(ctx context.Context, file models.Entity, outDir string) error {
-	// 1) Optional pre-delete (runs BEFORE generation)
-	if strings.EqualFold(file.Postprocess.Operation, "delete") &&
-		strings.EqualFold(file.Postprocess.Location, "database") &&
-		file.Postprocess.Enabled {
-		// Perform delete and stop
+func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool) error {
+	if !force {
+		log.Warn("You are attempting to delete rows", "file", file.Config.FileName, "host", file.CacheConfig.Hostname, "table", file.Postprocess.Table, "schema", file.Postprocess.Schema)
+		log.Warn("To carry out this action pass `--force` flag")
+
+		return nil
+	}
+	if strings.EqualFold(file.Postprocess.Operation, "delete") && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
 		rows, err := Delete(ctx, file)
 		if err != nil {
 			return err

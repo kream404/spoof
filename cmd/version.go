@@ -11,7 +11,7 @@ var versionCmd = &cobra.Command{
 	Short: "Give cli version",
 	Long:  `All software has versions, this is spoof's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("0.0.6")
+		fmt.Println("0.0.7")
 	},
 }
 
