@@ -5,7 +5,7 @@
         "delimiter": ",",
         "file_name": "functions.csv",
         "include_headers": true,
-        "rowcount": "100"
+        "row_count": 100
       },
       "cache": {
         "source": "output/testfile2.csv"
