@@ -174,16 +174,11 @@ func loadConfig() error {
 	}
 
 	var loaded models.FileConfig
-
 	if isBundle {
-		bundleDir := filepath.Dir(configPath)
 		for _, f := range b.Files {
 			src := strings.TrimSpace(f.Source)
 			if src == "" {
 				continue
-			}
-			if !filepath.IsAbs(src) {
-				src = filepath.Join(bundleDir, src)
 			}
 			log.Info("Loading referenced config", "source", src)
 
