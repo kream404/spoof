@@ -155,15 +155,10 @@ func loadConfig() error {
 	}
 
 	if isBundle {
-		bundleDir := filepath.Dir(config_path)
-
 		for _, f := range b.Files {
 			src := strings.TrimSpace(f.Source)
 			if src == "" {
 				continue
-			}
-			if !filepath.IsAbs(src) {
-				src = filepath.Join(bundleDir, src)
 			}
 
 			log.Info("Loading referenced config", "source", src)
