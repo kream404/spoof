@@ -3,8 +3,8 @@ package models
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
-	RowCount       int    `json:"row_count"`
-	FileCount      int    `json:"file_count,omitempty"`
+	RowCount       int    `json:"row_count,string"` // <-- allow quoted numbers
+	FileCount      int    `json:"file_count,omitempty,string"`
 	IncludeHeaders bool   `json:"include_headers"`
 	Header         string `json:"header,omitempty"`
 	Footer         string `json:"footer,omitempty"`
@@ -14,7 +14,7 @@ type Config struct {
 type Postprocess struct {
 	Enabled   bool     `json:"enabled,omitempty"`
 	Operation string   `json:"operation,omitempty"`
-	Location  string   `json:"location"`
+	Location  string   `json:"location,omitempty"`
 	Region    string   `json:"region,omitempty"`
 	Schema    string   `json:"schema,omitempty"`
 	Table     string   `json:"table,omitempty"`
@@ -23,7 +23,7 @@ type Postprocess struct {
 	HasHeader bool     `json:"headers,omitempty"`
 	TrimSpace bool     `json:"trim,omitempty"`
 	Columns   []string `json:"columns,omitempty"`
-	BatchSize int      `json:"batch,string"`
+	BatchSize int      `json:"batch,string,omitempty"` // already string-coerced
 }
 
 type Profiles struct {
