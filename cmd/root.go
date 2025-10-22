@@ -67,7 +67,7 @@ var rootCmd = &cobra.Command{
 
 		if err := loadConfig(); err != nil {
 			log.Error("Failed to load config file", "error", err.Error())
-			return err
+			return nil
 		}
 
 		if cfg == nil {
@@ -204,7 +204,7 @@ func loadConfig() error {
 			if len(varsMap) > 0 {
 				raw, err = injectJSON(raw, varsMap)
 				if err != nil {
-					return fmt.Errorf("variable injection failed: %w", err)
+					return fmt.Errorf("%w", err)
 				}
 			}
 			if err := json.Unmarshal(raw, &loaded); err != nil {
@@ -215,7 +215,7 @@ func loadConfig() error {
 		if len(varsMap) > 0 {
 			raw, err = injectJSON(raw, varsMap)
 			if err != nil {
-				return fmt.Errorf("variable injection failed: %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		if err := json.Unmarshal(raw, &loaded); err != nil {
@@ -293,6 +293,7 @@ func parseInjectedVars(pairs []string) map[string]string {
 func injectJSON(raw []byte, vars map[string]string) ([]byte, error) {
 	s := string(raw)
 	pairs := make([]string, 0, len(vars)*2)
+
 	for k, v := range vars {
 		pairs = append(pairs, "{{"+k+"}}", v)
 		pairs = append(pairs, "{{ "+k+" }}", v)
@@ -300,10 +301,18 @@ func injectJSON(raw []byte, vars map[string]string) ([]byte, error) {
 	r := strings.NewReplacer(pairs...)
 	s = r.Replace(s)
 
-	unfilled := regexp.MustCompile(`\{\{\s*[^}]+\s*\}}`)
-	if unfilled.MatchString(s) {
-		log.Debug("Unfilled template tokens remain after injection")
+	unfilled := regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)
+	matches := unfilled.FindAllStringSubmatch(s, -1)
+	if len(matches) > 0 {
+		var missing []string
+		for _, m := range matches {
+			if len(m) > 1 {
+				missing = append(missing, strings.TrimSpace(m[1]))
+			}
+		}
+		return nil, fmt.Errorf("missing input for %v", missing)
 	}
+
 	return []byte(s), nil
 }
 
