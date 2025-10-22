@@ -3,43 +3,46 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-ini/ini"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
-	json_parser "github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	config_path   string
-	config        *models.FileConfig
-	scaffold      bool
-	scaffold_name string
-	profile       string
-	version       bool
-	force         bool
-	verbose       bool
-	generate      bool
-	extract_path  string
+	configPath   string
+	cfg          *models.FileConfig
+	scaffold     bool
+	scaffoldName string
+	profile      string
+	showVersion  bool
+	force        bool
+	verbose      bool
+	generate     bool
+	extractPath  string
+	injectVars   []string
 )
 
+// Root command
 var rootCmd = &cobra.Command{
 	Use:   "spoof",
-	Short: "A tool for generating csv's.",
-	Run: func(cmd *cobra.Command, args []string) {
-		if version {
-			runVersion(cmd, args)
-			return
+	Short: "A tool for generating CSV files.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if showVersion {
+			versionCmd.Run(cmd, args)
+			return nil
 		}
 
 		if verbose {
@@ -48,87 +51,101 @@ var rootCmd = &cobra.Command{
 			log.Init(slog.LevelInfo)
 		}
 
-		if scaffold && scaffold_name != "" {
+		if scaffold && scaffoldName != "" {
 			runScaffold()
 		}
 
-		if extract_path != "" {
-			log.Info("Extracting config file", "path", extract_path)
-			runExtract(cmd, extract_path)
-			return
+		if extractPath != "" {
+			log.Info("Extracting config file", "path", extractPath)
+			extractCmd.Run(cmd, []string{extractPath})
+			return nil
 		}
 
 		if generate {
-			runGenerate(cmd)
-			return
+			return runGenerate(cmd)
 		}
 
 		if err := loadConfig(); err != nil {
-			log.Error("Failed to load config file ", "error", err.Error())
-			os.Exit(1)
+			log.Error("Failed to load config file", "error", err.Error())
+			return nil
 		}
 
-		if config != nil {
-			ProcessFiles(force)
+		if cfg == nil {
+			return errors.New("no configuration loaded")
 		}
 
+		ProcessFiles(force)
+		return nil
 	},
 }
 
-func runVersion(cmd *cobra.Command, args []string) {
-	versionCmd.Run(cmd, args)
-}
-
-func runExtract(cmd *cobra.Command, path string) {
-	extractCmd.Run(cmd, []string{path})
-}
-
-func runGenerate(cmd *cobra.Command) {
+func runGenerate(cmd *cobra.Command) error {
 	reader := bufio.NewReader(os.Stdin)
 	var genArgs []string
-	fmt.Print("name of config file: ")
-	outputName, _ := reader.ReadString('\n')
-	genArgs = append(genArgs, strings.TrimSpace(outputName))
 
-	fmt.Print("name of output file: ")
-	fileName, _ := reader.ReadString('\n')
-	genArgs = append(genArgs, strings.TrimSpace(fileName))
+	prompt := func(q string) (string, error) {
+		fmt.Print(q)
+		ans, err := reader.ReadString('\n')
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(ans), nil
+	}
 
-	fmt.Print("delimiter: ")
-	delimiter, _ := reader.ReadString('\n')
-	genArgs = append(genArgs, strings.TrimSpace(delimiter))
+	name, err := prompt("name of config file: ")
+	if err != nil {
+		return err
+	}
+	genArgs = append(genArgs, name)
 
-	fmt.Print("row count: ")
-	rowCount, _ := reader.ReadString('\n')
-	genArgs = append(genArgs, strings.TrimSpace(rowCount))
+	out, err := prompt("name of output file: ")
+	if err != nil {
+		return err
+	}
+	genArgs = append(genArgs, out)
 
-	fmt.Print("include headers [Y/n]: ")
-	headers, _ := reader.ReadString('\n')
-	genArgs = append(genArgs, strings.TrimSpace(headers))
+	delim, err := prompt("delimiter: ")
+	if err != nil {
+		return err
+	}
+	genArgs = append(genArgs, delim)
+
+	rows, err := prompt("row count: ")
+	if err != nil {
+		return err
+	}
+	genArgs = append(genArgs, rows)
+
+	headers, err := prompt("include headers [Y/n]: ")
+	if err != nil {
+		return err
+	}
+	genArgs = append(genArgs, headers)
 
 	generateCmd.Run(cmd, genArgs)
+	return nil
 }
 
 func ProcessFiles(force bool) {
-	csv.ProcessFiles(*config, force)
+	csv.ProcessFiles(*cfg, force)
 }
 
 func runScaffold() {
 	fmt.Println("generating faker..")
-	fmt.Println("scaffold_name:", scaffold_name)
+	fmt.Println("scaffold_name:", scaffoldName)
 
 	fakerConfig := FakerConfig{
-		Name:     scaffold_name,
-		DataType: scaffold_name,
+		Name:     scaffoldName,
+		DataType: scaffoldName,
 		Format:   "",
 	}
 	GenerateFaker(fakerConfig)
 }
 
 func loadConfig() error {
-	log.Debug("Loading config", "path", config_path)
+	log.Debug("Loading config", "path", configPath)
 
-	raw, err := os.ReadFile(config_path)
+	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("could not read config: %w", err)
 	}
@@ -141,11 +158,8 @@ func loadConfig() error {
 	}
 
 	var b bundle
-	var loaded models.FileConfig
-
-	parseErr := json.Unmarshal(raw, &b)
 	isBundle := false
-	if parseErr == nil && len(b.Files) > 0 {
+	if err := json.Unmarshal(raw, &b); err == nil && len(b.Files) > 0 {
 		for _, f := range b.Files {
 			if strings.TrimSpace(f.Source) != "" {
 				isBundle = true
@@ -154,100 +168,173 @@ func loadConfig() error {
 		}
 	}
 
+	varsMap := parseInjectedVars(injectVars)
+	if len(varsMap) > 0 {
+		log.Info("Injecting variables into config", "vars", injectVars)
+	}
+
+	var loaded models.FileConfig
 	if isBundle {
 		for _, f := range b.Files {
 			src := strings.TrimSpace(f.Source)
 			if src == "" {
 				continue
 			}
-
 			log.Info("Loading referenced config", "source", src)
-			c, err := json_parser.LoadConfig(src)
+
+			childRaw, err := os.ReadFile(src)
 			if err != nil {
-				return fmt.Errorf("failed to load referenced config %q: %w", src, err)
+				return fmt.Errorf("failed to read referenced config %q: %w", src, err)
 			}
-			loaded.Files = append(loaded.Files, c.Files...)
+			if len(varsMap) > 0 {
+				childRaw, err = injectJSON(childRaw, varsMap)
+				if err != nil {
+					return fmt.Errorf("variable injection failed for %q: %w", src, err)
+				}
+			}
+
+			var child models.FileConfig
+			if err := json.Unmarshal(childRaw, &child); err != nil {
+				return fmt.Errorf("failed to unmarshal referenced config %q: %w", src, err)
+			}
+			loaded.Files = append(loaded.Files, child.Files...)
 		}
 
 		if len(loaded.Files) == 0 {
-			cfg, err := json_parser.LoadConfig(config_path)
-			if err != nil {
+			if len(varsMap) > 0 {
+				raw, err = injectJSON(raw, varsMap)
+				if err != nil {
+					return fmt.Errorf("%w", err)
+				}
+			}
+			if err := json.Unmarshal(raw, &loaded); err != nil {
 				return fmt.Errorf("no files found from bundle sources and generic load failed: %w", err)
 			}
-			loaded = *cfg
 		}
 	} else {
-		cfg, err := json_parser.LoadConfig(config_path)
-		if err != nil {
+		if len(varsMap) > 0 {
+			raw, err = injectJSON(raw, varsMap)
+			if err != nil {
+				return fmt.Errorf("%w", err)
+			}
+		}
+		if err := json.Unmarshal(raw, &loaded); err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
-		loaded = *cfg
 	}
 
 	if len(loaded.Files) == 0 {
-		return fmt.Errorf("no files found in configuration")
+		return errors.New("no files found in configuration")
 	}
 
 	if profile != "" {
-		log.Info("Using connection profile", "profile", profile)
-		home, _ := os.UserHomeDir()
-		profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
-		cfg, err := ini.Load(profilePath)
-		if err != nil {
-			return fmt.Errorf("could not load profile file: %w", err)
+		if err := applyProfile(&loaded, profile); err != nil {
+			return err
 		}
-		section := cfg.Section(profile)
-
-		cacheProfile := models.CacheConfig{
-			Hostname: section.Key("hostname").String(),
-			Port:     section.Key("port").String(),
-			Username: section.Key("username").String(),
-			Password: section.Key("password").String(),
-			Name:     section.Key("name").String(),
-		}
-		if cacheProfile.Hostname == "" {
-			log.Error("Failed to load connection profile", "err", "profile not found")
-			os.Exit(1)
-		}
-		if cacheProfile.Password == "" {
-			fmt.Print("enter db password: ")
-			input, _ := terminal.ReadPassword(0)
-			fmt.Println()
-			cacheProfile.Password = string(input)
-		}
-
-		for i := range loaded.Files {
-			if loaded.Files[i].CacheConfig == nil {
-				loaded.Files[i].CacheConfig = &models.CacheConfig{}
-			}
-			merged := loaded.Files[i].CacheConfig.MergeConfig(cacheProfile)
-			loaded.Files[i].CacheConfig = &merged
-		}
-		log.Debug("Profile applied to all files", "count", len(loaded.Files))
 	}
 
-	config = &loaded
+	cfg = &loaded
 	return nil
 }
 
+func applyProfile(fc *models.FileConfig, name string) error {
+	log.Info("Using connection profile", "profile", name)
+	home, _ := os.UserHomeDir()
+	profilePath := filepath.Join(home, "/.config/spoof/profiles.ini")
+	cfgIni, err := ini.Load(profilePath)
+	if err != nil {
+		return fmt.Errorf("could not load profile file: %w", err)
+	}
+	section := cfgIni.Section(name)
+
+	cacheProfile := models.CacheConfig{
+		Hostname: section.Key("hostname").String(),
+		Port:     section.Key("port").String(),
+		Username: section.Key("username").String(),
+		Password: section.Key("password").String(),
+		Name:     section.Key("name").String(),
+	}
+	if cacheProfile.Hostname == "" {
+		log.Error("Failed to load connection profile", "err", "profile not found")
+		return errors.New("profile not found")
+	}
+	if cacheProfile.Password == "" {
+		fmt.Print("enter db password: ")
+		pw, _ := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		cacheProfile.Password = string(pw)
+	}
+
+	for i := range fc.Files {
+		if fc.Files[i].CacheConfig == nil {
+			fc.Files[i].CacheConfig = &models.CacheConfig{}
+		}
+		merged := fc.Files[i].CacheConfig.MergeConfig(cacheProfile)
+		fc.Files[i].CacheConfig = &merged
+	}
+	log.Debug("Profile applied to all files", "count", len(fc.Files))
+	return nil
+}
+
+func parseInjectedVars(pairs []string) map[string]string {
+	varsMap := make(map[string]string)
+	for _, pair := range pairs {
+		// allow: --inject KEY=VAL, --inject "KEY=VAL,FOO=BAR"
+		for _, p := range strings.Split(pair, ",") {
+			kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
+			if len(kv) == 2 && kv[0] != "" {
+				varsMap[kv[0]] = kv[1]
+			}
+		}
+	}
+	return varsMap
+}
+
+func injectJSON(raw []byte, vars map[string]string) ([]byte, error) {
+	s := string(raw)
+	pairs := make([]string, 0, len(vars)*2)
+
+	for k, v := range vars {
+		pairs = append(pairs, "{{"+k+"}}", v)
+		pairs = append(pairs, "{{ "+k+" }}", v)
+	}
+	r := strings.NewReplacer(pairs...)
+	s = r.Replace(s)
+
+	unfilled := regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)
+	matches := unfilled.FindAllStringSubmatch(s, -1)
+	if len(matches) > 0 {
+		var missing []string
+		for _, m := range matches {
+			if len(m) > 1 {
+				missing = append(missing, strings.TrimSpace(m[1]))
+			}
+		}
+		return nil, fmt.Errorf("missing input for %v", missing)
+	}
+
+	return []byte(s), nil
+}
+
 func init() {
-	rootCmd.Flags().BoolVarP(&version, "version", "v", false, "show cli version")
+	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "show CLI version")
 	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "allow destructive operation")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
 	rootCmd.Flags().BoolVarP(&generate, "generate", "g", false, "generate a new config file")
-	rootCmd.Flags().StringVarP(&extract_path, "extract", "e", "", "extract config file from csv")
-	rootCmd.Flags().StringVarP(&config_path, "config", "c", "", "path to config file")
+	rootCmd.Flags().StringArrayVarP(&injectVars, "inject", "i", []string{}, "variables to inject (key=value)")
+	rootCmd.Flags().StringVarP(&extractPath, "extract", "e", "", "extract config file from csv")
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", "", "path to config file")
 	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "db connection profile")
 	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
-	rootCmd.Flags().StringVarP(&scaffold_name, "scaffold_name", "n", "", "name of new faker")
+	rootCmd.Flags().StringVarP(&scaffoldName, "scaffold_name", "n", "", "name of new faker")
 }
 
 func Execute() {
 	start := time.Now()
 	if err := rootCmd.Execute(); err != nil {
-		log.Error("Uncaught error ", "error", err.Error())
+		log.Error("Uncaught error", "error", err.Error())
 		os.Exit(1)
 	}
 	elapsed := time.Since(start)
-	log.Info("Done in ", "time", elapsed)
+	log.Info("Done in", "time", elapsed)
 }
