@@ -87,7 +87,7 @@ Any run without a seed will output the seed used in generation to the console, w
 ---
 
 ## Postprocessing
-A `postprocessing` block can be provided in the json config to allow you to upload files generated directly to an s3 location. In the future this will also support encryption. To authenticate the upload you must be authenticated against the destination account. This will allow the tool to leverage your token in `~/.aws/credentials`. A working example of the config block can be seen below. The file name will be concatenated to the location, landing in a directory at the given location.
+A `postprocessing` block can be provided in the json config to allow you to upload files generated directly to an s3 location or seed a target database. In the future this will also support encryption. To authenticate the upload you must be authenticated against the destination account. This will allow the tool to leverage your token in `~/.aws/credentials`. A working example of the config block can be seen below. The file name will be concatenated to the location, landing in a directory at the given location.
 
 ```json
   "postprocess": {
@@ -96,6 +96,59 @@ A `postprocessing` block can be provided in the json config to allow you to uplo
     "region": "eu-west-2"
   },
 ```
+
+A sample `postprocessing` block for interacting with a database can be seen below. When using this think of the CSV as a representation of the entity in the database.
+
+```json
+    {
+      "config": {
+        "file_name": "output/customers.csv",
+        "delimiter": ",",
+        "include_headers": true
+      },
+      "postprocess": {
+        "enabled": false,
+        "operation": "insert",
+        "location": "database",
+        "schema": "account",
+        "table": "customer",
+        "headers": true
+      },
+    }
+```
+
+This supports both inserts and deletes. When using the `delete` you must provide an auxillary `key` field to denote the type of the key of the table you are trying to delete from. This will nuke all records present in the CSV from the target database table. This may be useful in the context of a CI/CD pipeline, allowing you to arrange large relational datasets for testing, and providing a mechanism to clean up after.
+
+```json
+      {
+        "config": {
+          "file_name": "output/customers.csv",
+          "delimiter": ",",
+          "include_headers": true
+        },
+        "postprocess": {
+          "enabled": true,
+          "operation": "delete",
+          "location": "database",
+          "schema": "account",
+          "table": "customer",
+          "key": "id",
+          "type": "uuid",
+          "headers": true
+        }
+      },
+```
+
+## Token replacement
+Spoof supports token replacement, allowing you to dynamically insert variable values into any string in your config file. This is especially useful when dealing with dates in file names / upload locations, or for injecting a UUID into the file name of large batches of files.
+
+You can include tokens in any string using double curly braces `{{ ... }}`.
+At runtime, Spoof replaces these tokens with their evaluated values from the execution command:
+
+```json
+  spoof -c path/to/config.json -V -i UUID=6573A7AE-175C-4492-AFC9-17A137FE03B5,DATE=02-01-1998
+```
+
 
 ## Field Types
 
