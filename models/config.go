@@ -45,6 +45,7 @@ type CacheConfig struct {
 	Name      string   `json:"name"`
 	Statement string   `json:"statement"`
 	Source    string   `json:"source"`
+	Region    string   `json:"region,omitempty"`
 	Columns   []string `json:"columns"`
 }
 

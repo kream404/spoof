@@ -38,6 +38,14 @@ The output file can also be seeded from an existing CSV file. This works the sam
   "source": "test/existing.csv"
 }
 ```
+Alternatively the cache can be populated directly from a CSV or collection of CSV's in an S3 location. You can either pass a path to a single file, or a top level prefix. In the case of a prefix it will aggregate all files below the prefix and seed from the aggregated cache.
+
+```json
+"cache": {
+  "source": "s3://path/to/file.csv",
+  "region": "eu-west-2"
+},
+```
 
 Fields can also be seeded with a CSV cache specific to the given field. This is useful for adhoc injection from sources outside of usual operation. The injection can optionally be governed by a `rate` which is the precentage chance of the cache being used. If it misses it will fallback to the generic cache if enabled, and finally to generation logic.
 
