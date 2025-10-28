@@ -381,7 +381,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		var valueStr string
 		if value == nil {
 			valueStr = ""
-			if rowIndex == 2 && value == nil { //if we cant fetch value from cache, log once and move on
+			if rowIndex == 2 { //if we cant fetch value from cache, log once and move on
 				log.Warn("Failed to inject value from cache", "key", key)
 			}
 		} else {
