@@ -156,6 +156,20 @@ Generates a uuid v7. This is not currently deterministic.
 
 ---
 
+### alphanumeric
+
+Generates a random string value. This faker supports two modes:
+  - Pattern mode (recommended) — generate a value that matches a supplied regular expression.
+  - Legacy mode — generate a simple random alphanumeric string of a given length and case.
+
+You configure this with the type, regex, length, and format attributes.
+
+```json
+{ "name": "id", "type": "alphanumeric", "regex": "^1-[0-9]{10}-[0-9]{10}$"  },
+```
+
+---
+
 ### `range`
 
 Selects a random value from a defined set of options.
