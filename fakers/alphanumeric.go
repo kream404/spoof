@@ -8,6 +8,10 @@ import (
 
 	"github.com/kream404/spoof/interfaces"
 	"github.com/kream404/spoof/models"
+
+	"github.com/lucasjones/reggen"
+
+	log "github.com/kream404/spoof/services/logger"
 )
 
 type AlphanumericFaker struct {
@@ -15,9 +19,18 @@ type AlphanumericFaker struct {
 	format   string // "upper" | "lower" | "mixed" (default)
 	rng      *rand.Rand
 	length   int
+	regex    string
 }
 
 func (f *AlphanumericFaker) Generate() (any, error) {
+	if f.regex != "" {
+		log.Debug("Generating according to regex", "regex", f.regex)
+		str, _ := reggen.Generate(f.regex, 10)
+		log.Debug("String generated", "string", str)
+
+		return str, nil
+	}
+
 	if f.length <= 0 {
 		return "", fmt.Errorf("alphanumeric: invalid length %d; must be > 0", f.length)
 	}
@@ -50,8 +63,8 @@ func (f *AlphanumericFaker) GetFormat() string {
 	return f.format
 }
 
-func NewAlphanumericFaker(format string, length int, rng *rand.Rand) (*AlphanumericFaker, error) {
-	if length <= 0 {
+func NewAlphanumericFaker(format string, length int, regex string, rng *rand.Rand) (*AlphanumericFaker, error) {
+	if length <= 0 && regex == "" {
 		return nil, fmt.Errorf("alphanumeric: length must be > 0 (got %d)", length)
 	}
 	if rng == nil {
@@ -70,12 +83,13 @@ func NewAlphanumericFaker(format string, length int, rng *rand.Rand) (*Alphanume
 		format:   mode, // keep normalized
 		rng:      rng,
 		length:   length,
+		regex:    regex,
 	}, nil
 }
 
 func init() {
 	RegisterFaker("alphanumeric", func(field models.Field, rng *rand.Rand) (interfaces.Faker[any], error) {
-		faker, err := NewAlphanumericFaker(field.Format, field.Length, rng)
+		faker, err := NewAlphanumericFaker(field.Format, field.Length, field.Regex, rng)
 		if err != nil {
 			return nil, err
 		}
