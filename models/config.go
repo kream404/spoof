@@ -68,6 +68,7 @@ type Field struct {
 	Function   string   `json:"function,omitempty"`
 	Source     string   `json:"source,omitempty"`
 	Rate       *int     `json:"rate,omitempty,string"`
+	Regex      string   `json:"regex,omitempty"`
 }
 
 type Entity struct {
