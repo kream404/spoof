@@ -112,16 +112,37 @@ func Delete(ctx context.Context, file models.Entity) (int, error) {
 func generateCSV(file models.Entity, outDir string) (string, error) {
 	var cache []map[string]any
 	var cacheIndex, rowIndex = 0, 1
+	var err error
 
 	if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
-		if strings.Contains(file.CacheConfig.Source, ".csv") {
-			log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
-			cache, _, _, _ = ReadCSVAsMap(file.CacheConfig.Source)
-		} else {
-			var err error
-			cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
-			if err != nil {
-				return "", fmt.Errorf("load cache: %w", err)
+		log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
+		if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
+
+			//TODO: refactor to cache service ?
+			switch {
+			//load from s3
+			case strings.HasPrefix(file.CacheConfig.Source, "s3://"):
+				s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, file.CacheConfig.Region)
+				if errConn != nil {
+					return "", fmt.Errorf("open s3 connection: %w", errConn)
+				}
+				cache, err = s3.LoadCache(*file.CacheConfig)
+				if err != nil {
+					return "", fmt.Errorf("load cache from s3: %w", err)
+				}
+			// load from csv
+			case strings.Contains(file.CacheConfig.Source, ".csv") && !strings.HasPrefix(file.CacheConfig.Source, "s3://"):
+				cache, _, _, err = ReadCSVAsMap(file.CacheConfig.Source)
+				if err != nil {
+					return "", fmt.Errorf("read local csv cache: %w", err)
+				}
+
+			//load from db
+			default:
+				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
+				if err != nil {
+					return "", fmt.Errorf("load cache from db: %w", err)
+				}
 			}
 		}
 	}
@@ -301,14 +322,12 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				if val := rows[idx][key]; val != nil {
 					value = val
 					injected = true
-					log.Debug("Injecting value from preloaded source CSV",
-						"source", field.Source, "field", field.Name, "value", value)
 				} else {
 					log.Warn("Key not found in preloaded source row; falling back",
 						"key", key, "field", field.Name, "source", field.Source)
 				}
 			} else {
-				log.Debug("No preloaded rows for source; skipping injection", "source", field.Source)
+				// log.Debug("No preloaded rows for source; skipping injection", "source", field.Source)
 			}
 		}
 
@@ -360,6 +379,9 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		}
 
 		var valueStr string
+		if rowIndex == 1 && value == nil {
+			log.Warn("Failed to inject value from cache", "key", key)
+		}
 		if value == nil {
 			valueStr = ""
 		} else {
