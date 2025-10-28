@@ -72,6 +72,7 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 	}
 
 	localPath, err := generateCSV(file, outDir)
+
 	if err != nil {
 		return fmt.Errorf("failed to generate CSV for %q: %w", file.Config.FileName, err)
 	}
@@ -110,43 +111,12 @@ func Delete(ctx context.Context, file models.Entity) (int, error) {
 }
 
 func generateCSV(file models.Entity, outDir string) (string, error) {
-	var cache []map[string]any
 	var cacheIndex, rowIndex = 0, 1
-	var err error
 
-	if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
-		log.Debug("Loading CSV cache", "source", file.CacheConfig.Source)
-		if file.CacheConfig != nil && (file.CacheConfig.Source != "" || file.CacheConfig.Statement != "") {
-
-			//TODO: refactor to cache service ?
-			switch {
-			//load from s3
-			case strings.HasPrefix(file.CacheConfig.Source, "s3://"):
-				s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, file.CacheConfig.Region)
-				if errConn != nil {
-					return "", fmt.Errorf("open s3 connection: %w", errConn)
-				}
-				cache, err = s3.LoadCache(*file.CacheConfig)
-				if err != nil {
-					return "", fmt.Errorf("load cache from s3: %w", err)
-				}
-			// load from csv
-			case strings.Contains(file.CacheConfig.Source, ".csv") && !strings.HasPrefix(file.CacheConfig.Source, "s3://"):
-				cache, _, _, err = ReadCSVAsMap(file.CacheConfig.Source)
-				if err != nil {
-					return "", fmt.Errorf("read local csv cache: %w", err)
-				}
-
-			//load from db
-			default:
-				cache, err = database.NewDBConnector().LoadCache(*file.CacheConfig)
-				if err != nil {
-					return "", fmt.Errorf("load cache from db: %w", err)
-				}
-			}
-		}
+	cache, err := LoadCache(file.CacheConfig)
+	if err != nil {
+		return "", fmt.Errorf("could not load cache: %w", err)
 	}
-
 	outFile, localPath, err := makeOutputFile(outDir, file.Config.FileName)
 	if err != nil {
 		return "", fmt.Errorf("create output file: %w", err)
@@ -247,6 +217,43 @@ func Insert(ctx context.Context, file models.Entity, localPath string) error {
 		return fmt.Errorf("failed to insert rows: %w", ierr)
 	}
 	return nil
+}
+
+func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
+	var cache []map[string]any
+	var err error
+
+	if config != nil && (config.Source != "" || config.Statement != "") {
+		log.Debug("Loading CSV cache", "source", config.Source)
+
+		//TODO: refactor to cache service ?
+		switch {
+		//load from s3
+		case strings.HasPrefix(config.Source, "s3://"):
+			s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, config.Region)
+			if errConn != nil {
+				return nil, fmt.Errorf("open s3 connection: %w", errConn)
+			}
+			cache, err = s3.LoadCache(*config)
+			if err != nil {
+				return nil, fmt.Errorf("load cache from s3: %w", err)
+			}
+		// load from csv
+		case strings.Contains(config.Source, ".csv") && !strings.HasPrefix(config.Source, "s3://"):
+			cache, _, _, err = ReadCSVAsMap(config.Source)
+			if err != nil {
+				return nil, fmt.Errorf("read local csv cache: %w", err)
+			}
+
+		//load from db
+		default:
+			cache, err = database.NewDBConnector().LoadCache(*config)
+			if err != nil {
+				return nil, fmt.Errorf("load cache from db: %w", err)
+			}
+		}
+	}
+	return cache, nil
 }
 
 func UploadToS3(ctx context.Context, file models.Entity, localPath string) error {
