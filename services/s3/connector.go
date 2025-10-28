@@ -54,27 +54,13 @@ func (d *S3Connector) LoadCache(config models.CacheConfig) ([]map[string]any, er
 		return nil, errors.New("S3Connector not initialised; call OpenConnection first")
 	}
 
-	src := strings.TrimSpace(os.Getenv("S3_SOURCE"))
-
-	type sourcer interface{ GetSource() string }
-	if src == "" {
-		if s, ok := any(config).(sourcer); ok {
-			src = s.GetSource()
-		}
-	}
-
-	if src == "" {
-		return nil, errors.New("no S3 source provided: set S3_SOURCE env or implement GetSource() on CacheConfig returning an s3:// URI")
-	}
-
-	bucket, key, err := parseS3URI(src)
+	bucket, key, err := parseS3URI(config.Source)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := context.Background()
 
-	// If the key looks like a prefix (ends with '/') list and aggregate, otherwise get single object
 	if key == "" || strings.HasSuffix(key, "/") {
 		var out []map[string]any
 		p := s3.NewListObjectsV2Paginator(d.client, &s3.ListObjectsV2Input{Bucket: &bucket, Prefix: &key})
