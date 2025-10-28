@@ -225,33 +225,31 @@ func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
 
 	if config != nil && (config.Source != "" || config.Statement != "") {
 		log.Debug("Loading CSV cache", "source", config.Source)
-		if config != nil && (config.Source != "" || config.Statement != "") {
 
-			//TODO: refactor to cache service ?
-			switch {
-			//load from s3
-			case strings.HasPrefix(config.Source, "s3://"):
-				s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, config.Region)
-				if errConn != nil {
-					return nil, fmt.Errorf("open s3 connection: %w", errConn)
-				}
-				cache, err = s3.LoadCache(*config)
-				if err != nil {
-					return nil, fmt.Errorf("load cache from s3: %w", err)
-				}
-			// load from csv
-			case strings.Contains(config.Source, ".csv") && !strings.HasPrefix(config.Source, "s3://"):
-				cache, _, _, err = ReadCSVAsMap(config.Source)
-				if err != nil {
-					return nil, fmt.Errorf("read local csv cache: %w", err)
-				}
+		//TODO: refactor to cache service ?
+		switch {
+		//load from s3
+		case strings.HasPrefix(config.Source, "s3://"):
+			s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, config.Region)
+			if errConn != nil {
+				return nil, fmt.Errorf("open s3 connection: %w", errConn)
+			}
+			cache, err = s3.LoadCache(*config)
+			if err != nil {
+				return nil, fmt.Errorf("load cache from s3: %w", err)
+			}
+		// load from csv
+		case strings.Contains(config.Source, ".csv") && !strings.HasPrefix(config.Source, "s3://"):
+			cache, _, _, err = ReadCSVAsMap(config.Source)
+			if err != nil {
+				return nil, fmt.Errorf("read local csv cache: %w", err)
+			}
 
-			//load from db
-			default:
-				cache, err = database.NewDBConnector().LoadCache(*config)
-				if err != nil {
-					return nil, fmt.Errorf("load cache from db: %w", err)
-				}
+		//load from db
+		default:
+			cache, err = database.NewDBConnector().LoadCache(*config)
+			if err != nil {
+				return nil, fmt.Errorf("load cache from db: %w", err)
 			}
 		}
 	}
