@@ -10,8 +10,6 @@ import (
 	"github.com/kream404/spoof/models"
 
 	"github.com/lucasjones/reggen"
-
-	log "github.com/kream404/spoof/services/logger"
 )
 
 type AlphanumericFaker struct {
@@ -24,10 +22,7 @@ type AlphanumericFaker struct {
 
 func (f *AlphanumericFaker) Generate() (any, error) {
 	if f.regex != "" {
-		log.Debug("Generating according to regex", "regex", f.regex)
 		str, _ := reggen.Generate(f.regex, 10)
-		log.Debug("String generated", "string", str)
-
 		return str, nil
 	}
 
