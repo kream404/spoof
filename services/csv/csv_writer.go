@@ -20,6 +20,7 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
+	"github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 	s3c "github.com/kream404/spoof/services/s3"
 	"github.com/shopspring/decimal"
@@ -367,6 +368,24 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 
 			case field.Type == "":
 				value = field.Value
+
+			case field.Type == "json":
+				cj, err := json.CompileJSONField(field, field.Template)
+
+				if err != nil {
+					return nil, err
+				}
+				// 1) build nested values
+				kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache)
+				if err != nil {
+					return nil, err
+				}
+				// 2) render + compact
+				s, err := json.RenderJSONCell(cj, kv)
+				if err != nil {
+					return nil, err
+				}
+				value = s
 
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)

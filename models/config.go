@@ -49,6 +49,11 @@ type CacheConfig struct {
 	Columns   []string `json:"columns"`
 }
 
+type JSONFieldConfig struct {
+	Template string  `json:"template"`
+	Fields   []Field `json:"fields"`
+}
+
 type Field struct {
 	Name       string   `json:"name"`
 	Alias      string   `json:"alias,omitempty"`
@@ -67,8 +72,11 @@ type Field struct {
 	Seed       bool     `json:"seed,omitempty"`
 	Function   string   `json:"function,omitempty"`
 	Source     string   `json:"source,omitempty"`
+	Template   string   `json:"template,omitempty"`
 	Rate       *int     `json:"rate,omitempty,string"`
 	Regex      string   `json:"regex,omitempty"`
+	// JSON       JSONFieldConfig `json:"json,omitempty"`
+	Fields []Field `json:"fields,omitempty"` // top-level (your current config)
 }
 
 type Entity struct {
