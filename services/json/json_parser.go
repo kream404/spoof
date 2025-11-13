@@ -151,7 +151,6 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 
 func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonFields []models.Field, cache []map[string]any) (map[string]string, error) {
 	out := make(map[string]string, len(jsonFields))
-
 	for _, f := range jsonFields {
 		var value any
 		key := f.Name
@@ -160,16 +159,26 @@ func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonField
 		}
 
 		if f.Type == "" && f.Value != "" {
-			valueStr := fmt.Sprint(f.Value)
-			out[f.Name] = valueStr
-			return out, nil
+			out[f.Name] = fmt.Sprint(f.Value)
+			continue
 		}
 
-		if f.Seed {
-			value = cache[seedIndex][key]
-			log.Debug("seeding json attribute", "field", f.Name, "value", fmt.Sprint(value))
-		} else {
+		if f.Type == "iterator" {
+			value = rowIndex
+			out[f.Name] = fmt.Sprint(value)
+			continue
+		}
 
+		if f.Seed && len(cache) > 0 {
+			if seedIndex < len(cache) {
+				value = cache[seedIndex][key]
+				log.Debug("seeding json attribute", "field", f.Name, "value", fmt.Sprint(value))
+			} else {
+				log.Warn("seed index out of range for json cache", "field", f.Name, "idx", seedIndex, "len", len(cache))
+			}
+		}
+
+		if !f.Seed {
 			factory, found := fakers.GetFakerByName(f.Type)
 			if !found {
 				return nil, fmt.Errorf("faker not found for type: %s", f.Type)
@@ -179,15 +188,16 @@ func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonField
 				log.Error("Error creating faker", "field_name", f.Name, "type", f.Type)
 				return nil, fmt.Errorf("%w", err)
 			}
-			value, err = faker.Generate()
-			if err != nil {
-				return nil, fmt.Errorf("error generating value for field %s: %w", f.Name, err)
+			var errGen error
+			value, errGen = faker.Generate()
+			if errGen != nil {
+				return nil, fmt.Errorf("error generating value for field %s: %w", f.Name, errGen)
 			}
 		}
 
-		valueStr := fmt.Sprint(value)
-		out[f.Name] = valueStr
+		out[f.Name] = fmt.Sprint(value)
 	}
+
 	return out, nil
 }
 

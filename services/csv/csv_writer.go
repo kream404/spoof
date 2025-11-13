@@ -562,7 +562,7 @@ func validateEntityConfig(file models.Entity) error {
 	// Database checks for insert/delete
 	if file.Postprocess.Enabled && strings.EqualFold(file.Postprocess.Location, "database") {
 		if file.CacheConfig == nil {
-			missing = append(missing, "cacheConfig")
+			return fmt.Errorf("Missing datbase config. You must pass a `profile` or Cache configuration in %s", file.Config.FileName)
 		} else {
 			if file.CacheConfig.Hostname == "" {
 				missing = append(missing, "cacheConfig.hostname")

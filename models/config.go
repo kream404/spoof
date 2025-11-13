@@ -52,7 +52,7 @@ type CacheConfig struct {
 type Field struct {
 	Name       string   `json:"name"`
 	Alias      string   `json:"alias,omitempty"`
-	Type       string   `json:"type"`
+	Type       string   `json:"type,omitempty"`
 	Modifier   *float64 `json:"modifier,omitempty"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
