@@ -46,13 +46,11 @@ func PerformVariableInjection(config models.FileConfig) (*models.FileConfig, err
 	}
 	jsonStr := string(raw)
 
-	// Replace each provided var
 	for k, v := range vars {
 		re := regexp.MustCompile(`\{\{\s*` + regexp.QuoteMeta(k) + `\s*\}\}`)
 		jsonStr = re.ReplaceAllString(jsonStr, v)
 	}
 
-	// Fail if any placeholders remain
 	if unresolved := tokenRE.FindAllStringSubmatch(jsonStr, -1); len(unresolved) > 0 {
 		missing := make([]string, 0, len(unresolved))
 		seen := map[string]struct{}{}
@@ -67,7 +65,6 @@ func PerformVariableInjection(config models.FileConfig) (*models.FileConfig, err
 		return nil, fmt.Errorf("missing injected variable(s): %s", strings.Join(missing, ", "))
 	}
 
-	// Back into the struct
 	var out models.FileConfig
 	if err := json.Unmarshal([]byte(jsonStr), &out); err != nil {
 		return nil, fmt.Errorf("unmarshal after injection: %w", err)
@@ -106,15 +103,13 @@ func ToJSONString(data any) (string, error) {
 	return string(jsonBytes), nil
 }
 
-// pkg/json/json.go (or wherever your helpers live)
 type CompiledJSON struct {
 	Tpl    *template.Template
-	Fields []models.Field // <-- MUST be set
+	Fields []models.Field
 	Path   string
 }
 
 func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, error) {
-	// 1) Coalesce template path (prefer arg, then json.template, then top-level template)
 	tpath := strings.TrimSpace(templatePath)
 	if tpath == "" && strings.TrimSpace(spec.Template) != "" {
 		tpath = spec.Template
@@ -130,7 +125,6 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 		return nil, fmt.Errorf("resolve template path: %w", err)
 	}
 
-	// 2) Read + parse
 	b, err := os.ReadFile(abs)
 	if err != nil {
 		return nil, fmt.Errorf("read template: %w", err)
@@ -140,7 +134,6 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 		return nil, fmt.Errorf("parse json template: %w", err)
 	}
 
-	// 3) Coalesce nested fields (prefer json.fields, else top-level fields)
 	flds := spec.Fields
 	if len(flds) == 0 && len(spec.Fields) > 0 {
 		flds = spec.Fields
@@ -166,6 +159,12 @@ func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonField
 			key = f.Alias
 		}
 
+		if f.Type == "" && f.Value != "" {
+			valueStr := fmt.Sprint(f.Value)
+			out[f.Name] = valueStr
+			return out, nil
+		}
+
 		if f.Seed {
 			value = cache[seedIndex][key]
 			log.Debug("seeding json attribute", "field", f.Name, "value", fmt.Sprint(value))
@@ -184,14 +183,9 @@ func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonField
 			if err != nil {
 				return nil, fmt.Errorf("error generating value for field %s: %w", f.Name, err)
 			}
-
-			if err != nil {
-				return nil, fmt.Errorf("json[%s]: %w", f.Name, err)
-			}
 		}
 
 		valueStr := fmt.Sprint(value)
-		// log.Debug("value generated", "key", key, "value", valueStr)
 		out[f.Name] = valueStr
 	}
 	return out, nil
@@ -209,13 +203,11 @@ func RenderJSONCell(cj *CompiledJSON, kv map[string]string) (string, error) {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 
-	// Validate & compact to single line
-	// (This also catches missing commas/braces in templates.)
 	var anyJSON any
 	if err := json.Unmarshal(buf.Bytes(), &anyJSON); err != nil {
 		return "", fmt.Errorf("invalid json from template: %w\nrendered: %s", err, buf.String())
 	}
-	// Re-marshal compact
+
 	compact, err := json.Marshal(anyJSON)
 	if err != nil {
 		return "", fmt.Errorf("compact json: %w", err)

@@ -181,74 +181,7 @@ func DetectDelimiter(line string) rune {
 }
 
 func DetectType(col []string, header string) (models.Field, error) {
-	if isNullColumn(col) {
-		return models.Field{Name: header, Value: ""}, nil
-	}
-
-	if ok, json := isJSON(strings.TrimSpace(col[0])); ok {
-		log.Warn("JSON DETECTED")
-		tplName := fmt.Sprintf("%s_template.json", sanitizeFileStem(header))
-
-		// infer template + fields
-		tplText, fields, err := inferJSONTemplateAndFields(json, tplName)
-		if err != nil {
-			return models.Field{Name: header, Type: "json"}, fmt.Errorf("infer json: %w", err)
-		}
-
-		written, err := WriteTemplate(tplName, tplText, true)
-		if err != nil {
-			return models.Field{Name: header, Type: "json"}, err
-		}
-		log.Debug("wrote json template", "path", written)
-
-		// store the name as provided to runtime (relative is fine; you can also store absolute if preferred)
-		return models.Field{
-			Name:     header,
-			Type:     "json",
-			Template: written, // you can keep tplName if you prefer relative paths
-			Fields:   fields,
-		}, nil
-	}
-
-	v := strings.TrimSpace(col[0])
-	if isUUID(v) {
-		return models.Field{Name: header, Type: "uuid"}, nil
-	}
-
-	if ok, layout := isTimestamp(v); ok {
-		return models.Field{Name: header, Type: "timestamp", Format: layout, Function: "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale"}, nil
-	}
-	if isEmail(v) {
-		return models.Field{Name: header, Type: "email"}, nil
-	}
-	if isIterator(col) {
-		return models.Field{Name: header, Type: "iterator"}, nil
-	}
-
-	if ok, decimals, length := isNumber(v); ok {
-		if length > 0 {
-			return models.Field{Name: header, Type: "number", Length: length}, nil
-		}
-		if decimals == 2 {
-			return models.Field{Name: header, Type: "number", Format: fmt.Sprint(decimals), Length: length, Min: 0, Max: 500, Function: "sin:period=0.01,amplitude=1.5,center=50,jitter=0.005,jitter_type=scale,jitter_amp=3"}, nil
-		}
-		return models.Field{Name: header, Type: "number"}, nil
-	}
-
-	if ok, fmtCase, L := isAlphanumeric(col); ok {
-		return models.Field{
-			Name:   header,
-			Type:   "alphanumeric",
-			Format: fmtCase, // "upper" | "lower" | "mixed"
-			Length: L,
-		}, nil
-	}
-
-	if ok, set := isRange(col, len(col)); ok {
-		return models.Field{Name: header, Type: "range", Values: strings.Join(set, ", ")}, nil
-	}
-
-	return models.Field{Name: header, Type: "unknown"}, nil
+	return InferField(header, col)
 }
 
 // TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
@@ -282,17 +215,36 @@ func isNumber(s string) (valid bool, decimals int, length int) {
 }
 
 func isTimestamp(s string) (bool, string) {
+	s = strings.TrimSpace(s)
+
 	formats := []string{
+		// date & time (space)
 		"2006-01-02 15:04:05",
-		"02-01-06 15:04:05",
+		"2006-01-02 15:04:05.000",
+		"2006-01-02 15:04:05.000000",
+		"2006-01-02 15:04:05.000000000",
+		"2006-01-02 15:04:05.000-07",
+		"2006-01-02 15:04:05.000-07:00",
+
+		// RFC3339 with/without fractional, with zone
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05.000Z07:00",
+		"2006-01-02T15:04:05.000000Z07:00",
+		"2006-01-02T15:04:05.000000000Z07:00",
+
+		// RFC3339-like WITHOUT zone (this is what your JSON uses)
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04:05.000",
+		"2006-01-02T15:04:05.000000",
+		"2006-01-02T15:04:05.000000000",
+
 		"2006-01-02",
 		"02/01/2006",
 		"02-01-06",
+		"02-01-06 15:04:05",
 		"15:04:05",
-		"2006-01-02T15:04:05Z07:00",
-		"2006-01-02T15:04:05.000Z07:00",
-		"2006-01-02 15:04:05.000-07",
 	}
+
 	for _, layout := range formats {
 		if _, err := time.Parse(layout, s); err == nil {
 			return true, layout
@@ -395,7 +347,6 @@ func isAlphanumeric(col []string) (ok bool, format string, length int) {
 	for _, v := range col {
 		v = strings.TrimSpace(v)
 		if v == "" {
-			// allow blanks; skip stats
 			continue
 		}
 		if !alphaNumRe.MatchString(v) {
@@ -403,7 +354,6 @@ func isAlphanumeric(col []string) (ok bool, format string, length int) {
 		}
 		sawAny = true
 
-		// collect case stats for letters only
 		hasLetter := false
 		allUpper := true
 		allLower := true
@@ -446,7 +396,6 @@ func isAlphanumeric(col []string) (ok bool, format string, length int) {
 		format = "mixed"
 	}
 
-	// pick most common length
 	maxC := -1
 	for L, c := range lengthCount {
 		if c > maxC {
@@ -480,7 +429,6 @@ func inferJSONTemplateAndFields(v any, tplName string) (string, []models.Field, 
 	ctx := &infCtx{used: make(map[string]int)}
 	node, fields := jsonInference(ctx, v, nil)
 
-	// Marshal with custom encoder that prints placeholders verbatim (no quotes for numbers/bools)
 	tplBytes, err := marshalTemplate(node)
 	if err != nil {
 		return "", nil, err
@@ -503,7 +451,6 @@ func jsonInference(ctx *infCtx, v any, path []string) (any, []models.Field) {
 			out[k] = n
 			fields = append(fields, f...)
 		}
-		// keep object order arbitrary; JSON encoder will handle
 		return out, fields
 
 	case []any:
@@ -519,7 +466,6 @@ func jsonInference(ctx *infCtx, v any, path []string) (any, []models.Field) {
 	default:
 		key := makeKey(ctx, path)
 
-		// detect type & whether JSON should quote it
 		mf := inferFieldFromValue(key, t)
 		ph := placeholder{Key: key, Quote: mf.Type == "email" || mf.Type == "uuid" || mf.Type == "timestamp" || mf.Type == "alphanumeric" || mf.Type == ""}
 
@@ -544,42 +490,135 @@ func makeKey(ctx *infCtx, path []string) string {
 	return base
 }
 
+func InferField(name string, col []string) (models.Field, error) {
+	// 1) All / almost-all null
+	if isNullColumn(col) {
+		return models.Field{Name: name, Value: ""}, nil
+	}
+
+	var sample string
+	for _, v := range col {
+		v = strings.TrimSpace(v)
+		if v != "" {
+			sample = v
+			break
+		}
+	}
+
+	if ok, jsonVal := isJSON(sample); ok {
+		tplName := fmt.Sprintf("%s_template.json", sanitizeFileStem(name))
+
+		tplText, fields, err := inferJSONTemplateAndFields(jsonVal, tplName)
+		if err != nil {
+			return models.Field{Name: name, Type: "json"}, fmt.Errorf("infer json: %w", err)
+		}
+
+		written, err := WriteTemplate(tplName, tplText, true)
+		if err != nil {
+			return models.Field{Name: name, Type: "json"}, err
+		}
+		log.Debug("wrote json template", "path", written)
+
+		return models.Field{
+			Name:     name,
+			Type:     "json",
+			Template: written,
+			Fields:   fields,
+		}, nil
+	}
+	if isUUID(sample) {
+		return models.Field{Name: name, Type: "uuid"}, nil
+	}
+	if ok, layout := isTimestamp(sample); ok {
+		return models.Field{
+			Name:     name,
+			Type:     "timestamp",
+			Format:   layout,
+			Function: "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale",
+		}, nil
+	}
+	if isEmail(sample) {
+		return models.Field{Name: name, Type: "email"}, nil
+	}
+	if isIterator(col) {
+		return models.Field{Name: name, Type: "iterator"}, nil
+	}
+	if ok, decimals, length := isNumber(sample); ok {
+		if length > 0 {
+			return models.Field{Name: name, Type: "number", Length: length}, nil
+		}
+		if decimals == 2 {
+			return models.Field{
+				Name:   name,
+				Type:   "number",
+				Format: fmt.Sprint(decimals),
+				Length: length,
+				Min:    0,
+				Max:    500,
+				Function: "sin:period=0.01,amplitude=1.5,center=50," +
+					"jitter=0.005,jitter_type=scale,jitter_amp=3",
+			}, nil
+		}
+		return models.Field{Name: name, Type: "number"}, nil
+	}
+
+	if ok, fmtCase, L := isAlphanumeric(col); ok {
+		return models.Field{
+			Name:   name,
+			Type:   "alphanumeric",
+			Format: fmtCase,
+			Length: L,
+		}, nil
+	}
+
+	if ok, set := isRange(col, len(col)); ok {
+		return models.Field{
+			Name:   name,
+			Type:   "range",
+			Values: strings.Join(set, ", "),
+		}, nil
+	}
+
+	// 6) Fallback
+	return models.Field{Name: name, Type: "unknown"}, nil
+}
+
 func inferFieldFromValue(name string, v any) models.Field {
 	switch x := v.(type) {
 	case string:
-		if isUUID(x) {
-			return models.Field{Name: name, Type: "uuid"}
+		f, err := InferField(name, []string{x})
+		if err != nil {
+			log.Error("inferFieldFromValue string failed, falling back", "err", err)
+			return models.Field{Name: name, Type: "unknown"}
 		}
-		if ok, layout := isTimestamp(x); ok {
-			return models.Field{Name: name, Type: "timestamp", Format: layout}
-		}
-		if isEmail(x) {
-			return models.Field{Name: name, Type: "email", Format: "email"}
-		}
-		// Try number in string? keep as alphanumeric (string) to be safe
-		return models.Field{Name: name, Type: "alphanumeric", Length: len(fmt.Sprint(v))}
+		return f
+
 	case float64:
-		// JSON numbers unmarshal as float64
-		// We won't set Min/Max; generator will randomize unless you plug ranges later
-		return models.Field{Name: name, Type: "number"}
+		s := strconv.FormatFloat(x, 'f', -1, 64)
+		f, err := InferField(name, []string{s})
+		if err != nil {
+			log.Error("inferFieldFromValue float failed, falling back", "err", err)
+			return models.Field{Name: name, Type: "number"}
+		}
+		return f
+
 	case bool:
+		// bool stays a tiny range
 		return models.Field{Name: name, Type: "range", Values: "true, false"}
+
 	case nil:
-		// represent as empty string, but still parameterisable (quoted)
 		return models.Field{Name: name, Value: ""}
+
 	default:
-		// fallback
+		// fallback to alphanumeric-ish
 		return models.Field{Name: name, Type: "alphanumeric", Length: 16}
 	}
 }
 
-// --- Marshal template with placeholders printed as {{ .key }} or "{{ .key }}" ---
 func marshalTemplate(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	// We can't make json.Encoder print bare tokens, so we render manually.
-	// Use a tiny recursive writer:
 	if err := writeTemplate(&buf, v); err != nil {
 		return nil, err
 	}
@@ -660,8 +699,6 @@ func sanitizeFileStem(s string) string {
 	return s
 }
 
-// WriteTemplate writes contents to a file path, creating parent dirs as needed.
-// If overwrite=false and the file exists, a numeric suffix is appended (e.g. _2, _3, ...).
 func WriteTemplate(path string, contents string, overwrite bool) (string, error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {

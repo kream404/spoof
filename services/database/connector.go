@@ -26,7 +26,7 @@ func NewDBConnector() *DBConnector {
 }
 
 func (d *DBConnector) OpenConnection(config models.CacheConfig) (*DBConnector, error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Password, config.Name)
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", config.Hostname, config.Port, config.Username, config.Name)
 	log.Debug("Connection string ", "string", psqlInfo)
 	database, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
