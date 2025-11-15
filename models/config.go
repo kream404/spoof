@@ -73,6 +73,7 @@ type Field struct {
 	Rate       *int     `json:"rate,omitempty,string"`
 	Regex      string   `json:"regex,omitempty"`
 	Fields     []Field  `json:"fields,omitempty"` // top-level (your current config)
+	Repeat     int      `json:"repeat,omitempty"`
 }
 
 type Entity struct {

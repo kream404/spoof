@@ -375,22 +375,48 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 
 			case field.Type == "json":
 				cj, err := json.CompileJSONField(field, field.Template)
+				if err != nil {
+					return nil, err
+				}
 
-				if err != nil {
-					return nil, err
+				repeat := field.Repeat
+				if repeat <= 0 {
+					repeat = 1
 				}
-				// 1) build nested values
-				kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources)
 
-				if err != nil {
-					return nil, err
+				if repeat == 1 {
+					// old behaviour: single JSON object
+					kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources)
+					if err != nil {
+						return nil, err
+					}
+
+					s, err := json.RenderJSONCell(cj.Raw, kv)
+					if err != nil {
+						return nil, err
+					}
+					value = s
+				} else {
+
+					parts := make([]string, 0, repeat)
+
+					for j := 0; j < repeat; j++ {
+						log.Debug("repeating json generation", "count", j)
+						elemSeedIndex := seedIndex + j
+						kv, err := json.GenerateNestedValues(rowIndex, elemSeedIndex, rng, cj.Fields, cache, fieldSources)
+						if err != nil {
+							return nil, fmt.Errorf("generate nested values for %s: %w", field.Name, err)
+						}
+
+						s, err := json.RenderJSONCell(cj.Raw, kv)
+						if err != nil {
+							return nil, fmt.Errorf("render json cell for %s: %w", field.Name, err)
+						}
+
+						parts = append(parts, s)
+					}
+					value = "[" + strings.Join(parts, ",") + "]"
 				}
-				// 2) render + compact
-				s, err := json.RenderJSONCell(cj.Raw, kv)
-				if err != nil {
-					return nil, err
-				}
-				value = s
 
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)
