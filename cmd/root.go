@@ -8,13 +8,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/go-ini/ini"
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/csv"
+	json_service "github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 	"golang.org/x/term"
 
@@ -150,14 +150,8 @@ func loadConfig() error {
 		return fmt.Errorf("could not read config: %w", err)
 	}
 
-	type bundleFile struct {
-		Source string `json:"source"`
-	}
-	type bundle struct {
-		Files []bundleFile `json:"files"`
-	}
-
-	var b bundle
+	// Try to detect if this is a bundle file
+	var b models.Bundle
 	isBundle := false
 	if err := json.Unmarshal(raw, &b); err == nil && len(b.Files) > 0 {
 		for _, f := range b.Files {
@@ -174,49 +168,52 @@ func loadConfig() error {
 	}
 
 	var loaded models.FileConfig
+
 	if isBundle {
+		// Load each referenced config
 		for _, f := range b.Files {
 			src := strings.TrimSpace(f.Source)
 			if src == "" {
 				continue
 			}
+
 			log.Info("Loading referenced config", "source", src)
 
 			childRaw, err := os.ReadFile(src)
 			if err != nil {
 				return fmt.Errorf("failed to read referenced config %q: %w", src, err)
 			}
-			if len(varsMap) > 0 {
-				childRaw, err = injectJSON(childRaw, varsMap)
-				if err != nil {
-					return fmt.Errorf("variable injection failed for %q: %w", src, err)
-				}
+
+			childRaw, err = applyVars(childRaw, varsMap)
+			if err != nil {
+				return fmt.Errorf("variable injection failed for %q: %w", src, err)
 			}
 
 			var child models.FileConfig
 			if err := json.Unmarshal(childRaw, &child); err != nil {
 				return fmt.Errorf("failed to unmarshal referenced config %q: %w", src, err)
 			}
+
 			loaded.Files = append(loaded.Files, child.Files...)
 		}
 
+		// Fallback: treat the top-level config as a normal config
 		if len(loaded.Files) == 0 {
-			if len(varsMap) > 0 {
-				raw, err = injectJSON(raw, varsMap)
-				if err != nil {
-					return fmt.Errorf("%w", err)
-				}
+			var err error
+			raw, err = applyVars(raw, varsMap)
+			if err != nil {
+				return fmt.Errorf("variable injection failed for root bundle: %w", err)
 			}
 			if err := json.Unmarshal(raw, &loaded); err != nil {
 				return fmt.Errorf("no files found from bundle sources and generic load failed: %w", err)
 			}
 		}
 	} else {
-		if len(varsMap) > 0 {
-			raw, err = injectJSON(raw, varsMap)
-			if err != nil {
-				return fmt.Errorf("%w", err)
-			}
+		// Simple non-bundle config
+		var err error
+		raw, err = applyVars(raw, varsMap)
+		if err != nil {
+			return fmt.Errorf("variable injection failed: %w", err)
 		}
 		if err := json.Unmarshal(raw, &loaded); err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
@@ -235,6 +232,13 @@ func loadConfig() error {
 
 	cfg = &loaded
 	return nil
+}
+
+func applyVars(raw []byte, varsMap map[string]string) ([]byte, error) {
+	if len(varsMap) == 0 {
+		return raw, nil
+	}
+	return json_service.PerformTokenReplacement(raw, varsMap)
 }
 
 func applyProfile(fc *models.FileConfig, name string) error {
@@ -288,32 +292,6 @@ func parseInjectedVars(pairs []string) map[string]string {
 		}
 	}
 	return varsMap
-}
-
-func injectJSON(raw []byte, vars map[string]string) ([]byte, error) {
-	s := string(raw)
-	pairs := make([]string, 0, len(vars)*2)
-
-	for k, v := range vars {
-		pairs = append(pairs, "{{"+k+"}}", v)
-		pairs = append(pairs, "{{ "+k+" }}", v)
-	}
-	r := strings.NewReplacer(pairs...)
-	s = r.Replace(s)
-
-	unfilled := regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)
-	matches := unfilled.FindAllStringSubmatch(s, -1)
-	if len(matches) > 0 {
-		var missing []string
-		for _, m := range matches {
-			if len(m) > 1 {
-				missing = append(missing, strings.TrimSpace(m[1]))
-			}
-		}
-		return nil, fmt.Errorf("missing input for %v", missing)
-	}
-
-	return []byte(s), nil
 }
 
 func init() {

@@ -51,31 +51,34 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 		return fmt.Errorf("%w", err)
 	}
 
-	if strings.EqualFold(file.Postprocess.Operation, "delete") && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
+	if (strings.EqualFold(file.Postprocess.Operation, "delete") || strings.EqualFold(file.Postprocess.Operation, "insert")) && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
 
 		if !force {
-			log.Warn("You are attempting to delete rows",
+			log.Warn("You are attempting to perform a destructive database operation",
+				"operation", file.Postprocess.Operation,
 				"file", file.Config.FileName,
 				"host", file.CacheConfig.Hostname,
 				"table", file.Postprocess.Table,
 				"schema", file.Postprocess.Schema,
 			)
-			log.Warn("To carry out this action pass `--force` flag")
+			log.Warn("To carry out this action pass the `--force` flag")
 			return nil
 		}
-
-		rows, err := Delete(ctx, file)
-		if err != nil {
-			return fmt.Errorf("failed to delete rows for file %q: %w", file.Config.FileName, err)
-		}
-		log.Info("Delete completed", "table", file.Postprocess.Table, "rows", rows)
-		return nil
 	}
 
-	localPath, err := generateCSV(file, outDir)
+	var err error
+	var localPath string
+
+	if file.Fields != nil {
+		localPath, err = generateCSV(file, outDir)
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to generate CSV for %q: %w", file.Config.FileName, err)
+	}
+
+	if err := Delete(ctx, file); err != nil {
+		return fmt.Errorf("failed to delete rows for file %q: %w", file.Config.FileName, err)
 	}
 
 	if err := Insert(ctx, file, localPath); err != nil {
@@ -89,26 +92,27 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 	return nil
 }
 
-func Delete(ctx context.Context, file models.Entity) (int, error) {
+func Delete(ctx context.Context, file models.Entity) error {
 	pp := file.Postprocess
 	if !pp.Enabled || !strings.EqualFold(pp.Location, "database") || !strings.EqualFold(pp.Operation, "delete") {
-		return 0, nil
+		return nil
 	}
 
 	csvPath := file.Config.FileName
 
-	log.Info("delete from", "schema", pp.Schema, "table", pp.Table, "csv", csvPath)
+	log.Debug("delete from", "schema", pp.Schema, "table", pp.Table, "csv", csvPath)
 
 	db, err := database.NewDBConnector().OpenConnection(*file.CacheConfig)
 	if err != nil {
-		return 0, fmt.Errorf("open db for delete: %w", err)
+		return fmt.Errorf("open db for delete: %w", err)
 	}
 
 	rows, err := db.DeleteRowsByKeyFromFile(csvPath, file)
 	if err != nil {
-		return 0, fmt.Errorf("failed to delete rows: %w", err)
+		return fmt.Errorf("failed to delete rows: %w", err)
 	}
-	return rows, nil
+	log.Info("Delete completed", "table", pp.Table, "rows", rows)
+	return nil
 }
 
 func generateCSV(file models.Entity, outDir string) (string, error) {
@@ -376,12 +380,13 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					return nil, err
 				}
 				// 1) build nested values
-				kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache)
+				kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources)
+
 				if err != nil {
 					return nil, err
 				}
 				// 2) render + compact
-				s, err := json.RenderJSONCell(cj, kv)
+				s, err := json.RenderJSONCell(cj.Raw, kv)
 				if err != nil {
 					return nil, err
 				}
@@ -423,26 +428,32 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 type fieldCache map[string][]map[string]any
 
 func preloadFieldSources(fields []models.Field) fieldCache {
-	fieldCache := make(fieldCache)
+	fc := make(fieldCache)
 	seen := make(map[string]struct{})
+	preloadFieldSourcesRecursive(fields, fc, seen)
+	return fc
+}
+
+func preloadFieldSourcesRecursive(fields []models.Field, fc fieldCache, seen map[string]struct{}) {
 	for _, f := range fields {
-		if f.Source == "" || !strings.Contains(f.Source, ".csv") {
-			continue
+		if f.Source != "" && strings.Contains(f.Source, ".csv") {
+			if _, ok := seen[f.Source]; !ok {
+				rows, _, _, err := ReadCSVAsMap(f.Source)
+				if err != nil {
+					log.Error("Failed to preload source CSV; will skip injection for this source",
+						"source", f.Source, "err", err)
+				} else {
+					fc[f.Source] = rows
+					seen[f.Source] = struct{}{}
+					log.Debug("Preloaded CSV source", "source", f.Source, "rows", len(rows))
+				}
+			}
 		}
-		if _, ok := seen[f.Source]; ok {
-			continue
+
+		if len(f.Fields) > 0 {
+			preloadFieldSourcesRecursive(f.Fields, fc, seen)
 		}
-		rows, _, _, err := ReadCSVAsMap(f.Source)
-		if err != nil {
-			log.Error("Failed to preload source CSV; will skip injection for this source",
-				"source", f.Source, "err", err)
-			continue
-		}
-		fieldCache[f.Source] = rows
-		seen[f.Source] = struct{}{}
-		log.Debug("Preloaded CSV source", "source", f.Source, "rows", len(rows))
 	}
-	return fieldCache
 }
 
 func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
@@ -549,7 +560,7 @@ func withIndexSuffix(name string, i, count int) string {
 }
 
 func validateEntityConfig(file models.Entity) error {
-	missing := []string{}
+	var missing []string
 
 	if file.Config.FileName == "" {
 		missing = append(missing, "config.fileName")
@@ -562,14 +573,21 @@ func validateEntityConfig(file models.Entity) error {
 	// Database checks for insert/delete
 	if file.Postprocess.Enabled && strings.EqualFold(file.Postprocess.Location, "database") {
 		if file.CacheConfig == nil {
-			return fmt.Errorf("Missing datbase config. You must pass a `profile` or Cache configuration in %s", file.Config.FileName)
-		} else {
-			if file.CacheConfig.Hostname == "" {
-				missing = append(missing, "cacheConfig.hostname")
-			}
-			if file.CacheConfig.Name == "" {
-				missing = append(missing, "cacheConfig.name")
-			}
+			return fmt.Errorf(
+				"missing database config for %s: you must pass a `profile` or inline `cache` configuration",
+				file.Config.FileName,
+			)
+		}
+
+		if file.CacheConfig.Hostname == "" {
+			return fmt.Errorf(
+				"missing database config for %s: cacheConfig.hostname is empty (pass a `profile` or cacheConfig)",
+				file.Config.FileName,
+			)
+		}
+
+		if file.CacheConfig.Name == "" {
+			missing = append(missing, "cacheConfig.name")
 		}
 
 		if file.Postprocess.Table == "" {
@@ -592,7 +610,6 @@ func validateEntityConfig(file models.Entity) error {
 			if file.Postprocess.Key == "" {
 				missing = append(missing, "postprocess.key")
 			}
-
 			if file.Postprocess.Type == "" {
 				missing = append(missing, "postprocess.type")
 			}
@@ -600,7 +617,7 @@ func validateEntityConfig(file models.Entity) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("missing config: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("missing config for %s: %s", file.Config.FileName, strings.Join(missing, ", "))
 	}
 
 	return nil

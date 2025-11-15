@@ -1,7 +1,6 @@
 package detector
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -16,10 +15,13 @@ import (
 	log "github.com/kream404/spoof/services/logger"
 )
 
-// TODO: this should probably be refactored to live in the fakers. Would know what optional fields can be returned and could return the field
+//
+// ───────────────────────── BASIC DETECTORS ────────────────────────────
+//
+
 func isUUID(s string) bool {
 	uuidRegex := regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`)
-	return uuidRegex.MatchString(s)
+	return uuidRegex.MatchString(strings.TrimSpace(s))
 }
 
 func isNumber(s string) (valid bool, decimals int, length int) {
@@ -28,6 +30,7 @@ func isNumber(s string) (valid bool, decimals int, length int) {
 		return false, 0, 0
 	}
 
+	// strip sign for length/decimals calculation
 	s = strings.TrimPrefix(s, "-")
 	s = strings.TrimPrefix(s, "+")
 
@@ -59,13 +62,14 @@ func isTimestamp(s string) (bool, string) {
 		"2006-01-02T15:04:05.000000Z07:00",
 		"2006-01-02T15:04:05.000000000Z07:00",
 
-		// RFC3339-like WITHOUT zone (this is what your JSON uses)
+		// RFC3339-like without zone
 		"2006-01-02T15:04:05",
 		"2006-01-02T15:04:05.000",
 		"2006-01-02T15:04:05.000000",
 		"2006-01-02 15:04:05.99999-07",
 		"2006-01-02T15:04:05.000000000",
 
+		// date-only / time-only
 		"2006-01-02",
 		"02/01/2006",
 		"02-01-06",
@@ -88,17 +92,21 @@ func isNullColumn(col []string) bool {
 			nonEmpty++
 		}
 	}
+	if len(col) == 0 {
+		return true
+	}
 	return nonEmpty == 0 || float64(nonEmpty)/float64(len(col)) < 0.05
 }
 
 func isEmail(s string) bool {
+	s = strings.TrimSpace(s)
 	return strings.Contains(s, "@") && strings.Contains(s, ".")
 }
 
 // isRange decides if a column is "categorical with a small set of distinct values".
-// It adapts to file size by allowing up to min(max(ceil(5% of non-empty), 8), 200) distincts.
-func isRange(col []string, rowCount int) (bool, []string) {
-	const maxReturn = 500 //TODO: make configurable in extract
+// NOTE: rowCount is currently unused (kept in signature for compatibility).
+func isRange(col []string, _ int) (bool, []string) {
+	const maxReturn = 500 // TODO: make configurable in extract
 
 	normalize := func(s string) string {
 		s = strings.TrimSpace(s)
@@ -175,10 +183,11 @@ func isAlphanumeric(col []string) (ok bool, format string, length int) {
 		allUpper := true
 		allLower := true
 		for _, r := range v {
-			if r >= 'A' && r <= 'Z' {
+			switch {
+			case r >= 'A' && r <= 'Z':
 				hasLetter = true
 				allLower = false
-			} else if r >= 'a' && r <= 'z' {
+			case r >= 'a' && r <= 'z':
 				hasLetter = true
 				allUpper = false
 			}
@@ -225,9 +234,12 @@ func isAlphanumeric(col []string) (ok bool, format string, length int) {
 }
 
 func isIterator(col []string) bool {
+	if len(col) == 0 {
+		return false
+	}
 	for i := 1; i < len(col); i++ {
-		prev, errPrev := strconv.Atoi(col[i-1])
-		curr, errCurr := strconv.Atoi(col[i])
+		prev, errPrev := strconv.Atoi(strings.TrimSpace(col[i-1]))
+		curr, errCurr := strconv.Atoi(strings.TrimSpace(col[i]))
 		if errPrev != nil || errCurr != nil || curr-prev != 1 {
 			return false
 		}
@@ -236,6 +248,11 @@ func isIterator(col []string) bool {
 }
 
 func isJSON(s string) (bool, any) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false, nil
+	}
+
 	var v any
 	if err := json.Unmarshal([]byte(s), &v); err != nil {
 		return false, nil
@@ -249,64 +266,77 @@ func isJSON(s string) (bool, any) {
 	}
 }
 
+//
+// ───────────────────────── JSON INFERENCE ─────────────────────────────
+//
+
 type infCtx struct {
 	used map[string]int
 }
 
-func inferJSONTemplateAndFields(v any, tplName string) (string, []models.Field, error) {
+func inferJSONTemplateAndFields(v any) (string, []models.Field, error) {
 	ctx := &infCtx{used: make(map[string]int)}
 	node, fields := jsonInference(ctx, v, nil)
 
-	tplBytes, err := marshalTemplate(node)
+	tplBytes, err := json_writer.MarshalTemplate(node)
 	if err != nil {
 		return "", nil, err
 	}
 	return string(tplBytes), fields, nil
 }
 
-type placeholder struct {
-	Key   string
-	Quote bool
-} // Quote=true -> rendered as "{{ .Key }}", otherwise {{ .Key }}
-
 func jsonInference(ctx *infCtx, v any, path []string) (any, []models.Field) {
 	switch t := v.(type) {
 	case map[string]any:
-		out := make(map[string]any, len(t))
-		var fields []models.Field
-		for k, val := range t {
-			n, f := jsonInference(ctx, val, append(path, k))
-			out[k] = n
-			fields = append(fields, f...)
-		}
-		return out, fields
-
+		return inferJSONObject(ctx, t, path)
 	case []any:
-		arr := make([]any, len(t))
-		var fields []models.Field
-		for i, val := range t {
-			n, f := jsonInference(ctx, val, append(path, strconv.Itoa(i)))
-			arr[i] = n
-			fields = append(fields, f...)
-		}
-		return arr, fields
-
+		return inferJSONArray(ctx, t, path)
 	default:
-		key := makeKey(ctx, path)
-
-		mf := inferFieldFromValue(key, t)
-		ph := placeholder{
-			Key: key,
-			Quote: mf.Type == "email" ||
-				mf.Type == "uuid" ||
-				mf.Type == "timestamp" ||
-				mf.Type == "alphanumeric" ||
-				mf.Type == "range" ||
-				mf.Type == "",
-		}
-
-		return ph, []models.Field{mf}
+		return inferJSONLeaf(ctx, t, path)
 	}
+}
+
+func inferJSONObject(ctx *infCtx, obj map[string]any, path []string) (any, []models.Field) {
+	out := make(map[string]any, len(obj))
+	var fields []models.Field
+
+	for k, val := range obj {
+		n, f := jsonInference(ctx, val, append(path, k))
+		out[k] = n
+		fields = append(fields, f...)
+	}
+
+	return out, fields
+}
+
+func inferJSONArray(ctx *infCtx, arr []any, path []string) (any, []models.Field) {
+	if len(arr) == 0 {
+		// empty array: keep as-is, no fields
+		return []any{}, nil
+	}
+
+	out := make([]any, len(arr))
+	var fields []models.Field
+
+	for i, val := range arr {
+		n, f := jsonInference(ctx, val, append(path, strconv.Itoa(i)))
+		out[i] = n
+		fields = append(fields, f...)
+	}
+
+	return out, fields
+}
+
+func inferJSONLeaf(ctx *infCtx, v any, path []string) (any, []models.Field) {
+	key := makeKey(ctx, path)
+	mf := inferFieldFromValue(key, v)
+
+	ph := models.Placeholder{
+		Key:  key,
+		Type: mf.Type,
+	}
+
+	return ph, []models.Field{mf}
 }
 
 func makeKey(ctx *infCtx, path []string) string {
@@ -326,12 +356,17 @@ func makeKey(ctx *infCtx, path []string) string {
 	return base
 }
 
+//
+// ───────────────────────── FIELD INFERENCE ────────────────────────────
+//
+
 func InferField(name string, col []string) (models.Field, error) {
 	// 1) All / almost-all null
 	if isNullColumn(col) {
 		return models.Field{Name: name, Value: ""}, nil
 	}
 
+	// 2) Pick a non-empty sample value
 	var sample string
 	for _, v := range col {
 		v = strings.TrimSpace(v)
@@ -341,10 +376,10 @@ func InferField(name string, col []string) (models.Field, error) {
 		}
 	}
 
+	// 3) JSON
 	if ok, jsonVal := isJSON(sample); ok {
-		tplName := fmt.Sprintf("%s_template.json", sanitizeFileStem(name))
-
-		tplText, fields, err := inferJSONTemplateAndFields(jsonVal, tplName)
+		tplName := fmt.Sprintf("%s_template.json", json_writer.SanitizeFileStem(name))
+		tplText, fields, err := inferJSONTemplateAndFields(jsonVal)
 		if err != nil {
 			return models.Field{Name: name, Type: "json"}, fmt.Errorf("infer json: %w", err)
 		}
@@ -362,9 +397,13 @@ func InferField(name string, col []string) (models.Field, error) {
 			Fields:   fields,
 		}, nil
 	}
+
+	// 4) UUID
 	if isUUID(sample) {
 		return models.Field{Name: name, Type: "uuid"}, nil
 	}
+
+	// 5) Timestamp
 	if ok, layout := isTimestamp(sample); ok {
 		return models.Field{
 			Name:     name,
@@ -373,12 +412,14 @@ func InferField(name string, col []string) (models.Field, error) {
 			Function: "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale",
 		}, nil
 	}
+
+	// 6) Email
 	if isEmail(sample) {
 		return models.Field{Name: name, Type: "email"}, nil
 	}
 
+	// 7) Number
 	if ok, decimals, length := isNumber(sample); ok {
-
 		if length == 2 {
 			return models.Field{Name: name, Type: "number", Length: length, Min: 1, Max: 99}, nil
 		}
@@ -400,10 +441,12 @@ func InferField(name string, col []string) (models.Field, error) {
 		return models.Field{Name: name, Type: "number"}, nil
 	}
 
+	// 8) Iterator
 	if isIterator(col) {
 		return models.Field{Name: name, Type: "iterator"}, nil
 	}
 
+	// 9) Alphanumeric
 	if ok, fmtCase, L := isAlphanumeric(col); ok {
 		return models.Field{
 			Name:   name,
@@ -413,6 +456,7 @@ func InferField(name string, col []string) (models.Field, error) {
 		}, nil
 	}
 
+	// 10) Small range (categorical)
 	if ok, set := isRange(col, len(col)); ok {
 		return models.Field{
 			Name:   name,
@@ -421,7 +465,7 @@ func InferField(name string, col []string) (models.Field, error) {
 		}, nil
 	}
 
-	// 6) Fallback
+	// 11) Fallback
 	return models.Field{Name: name, Type: "unknown"}, nil
 }
 
@@ -451,91 +495,7 @@ func inferFieldFromValue(name string, v any) models.Field {
 		return models.Field{Name: name, Value: ""}
 
 	default:
-		// fallback to alphanumeric-ish
+		// fallback to generic alphanumeric
 		return models.Field{Name: name, Type: "alphanumeric", Length: 16}
 	}
-}
-
-func marshalTemplate(v any) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := writeTemplate(&buf, v); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func writeTemplate(w *bytes.Buffer, v any) error {
-	switch t := v.(type) {
-	case map[string]any:
-		w.WriteByte('{')
-		i := 0
-		keys := make([]string, 0, len(t))
-		for k := range t {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			if i > 0 {
-				w.WriteByte(',')
-			}
-			// key
-			kb, _ := json.Marshal(k)
-			w.Write(kb)
-			w.WriteByte(':')
-			if err := writeTemplate(w, t[k]); err != nil {
-				return err
-			}
-			i++
-		}
-		w.WriteByte('}')
-		return nil
-	case []any:
-		w.WriteByte('[')
-		for i, el := range t {
-			if i > 0 {
-				w.WriteByte(',')
-			}
-			if err := writeTemplate(w, el); err != nil {
-				return err
-			}
-		}
-		w.WriteByte(']')
-		return nil
-	case placeholder:
-		if t.Quote {
-			// string-like
-			w.WriteString(`"{{ .`)
-			w.WriteString(t.Key)
-			w.WriteString(` }}"`)
-		} else {
-			// number/bool
-			w.WriteString(`{{ .`)
-			w.WriteString(t.Key)
-			w.WriteString(` }}`)
-		}
-		return nil
-	case string:
-		b, _ := json.Marshal(t)
-		w.Write(b)
-		return nil
-	case float64, bool, nil:
-		b, _ := json.Marshal(t)
-		w.Write(b)
-		return nil
-	default:
-		b, _ := json.Marshal(t)
-		w.Write(b)
-		return nil
-	}
-}
-
-func sanitizeFileStem(s string) string {
-	s = strings.ToLower(regexp.MustCompile(`[^a-z0-9_-]+`).ReplaceAllString(s, "_"))
-	s = strings.Trim(s, "_-")
-	if s == "" {
-		s = "json"
-	}
-	return s
 }

@@ -1,7 +1,6 @@
 package json
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -9,8 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
-	"text/template"
 
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
@@ -104,7 +101,7 @@ func ToJSONString(data any) (string, error) {
 }
 
 type CompiledJSON struct {
-	Tpl    *template.Template
+	Raw    string // raw JSON template text
 	Fields []models.Field
 	Path   string
 }
@@ -114,12 +111,10 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 	if tpath == "" && strings.TrimSpace(spec.Template) != "" {
 		tpath = spec.Template
 	}
-	if tpath == "" && strings.TrimSpace(spec.Template) != "" {
-		tpath = spec.Template
-	}
 	if tpath == "" {
 		return nil, fmt.Errorf("json: missing template path for field '%s'", spec.Name)
 	}
+
 	abs, err := filepath.Abs(tpath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve template path: %w", err)
@@ -129,98 +124,98 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 	if err != nil {
 		return nil, fmt.Errorf("read template: %w", err)
 	}
-	tpl, err := template.New(spec.Name).Option("missingkey=error").Parse(string(b))
-	if err != nil {
-		return nil, fmt.Errorf("parse json template: %w", err)
-	}
 
 	flds := spec.Fields
-	if len(flds) == 0 && len(spec.Fields) > 0 {
-		flds = spec.Fields
-	}
 	if len(flds) == 0 {
-		return nil, fmt.Errorf("json: no nested fields for '%s' (expected top-level 'fields' or 'json.fields')", spec.Name)
+		return nil, fmt.Errorf("json: no nested fields for '%s' (expected top-level 'fields')", spec.Name)
 	}
 
 	return &CompiledJSON{
-		Tpl:    tpl,
+		Raw:    string(b), // <-- store raw JSON template
 		Fields: flds,
 		Path:   abs,
 	}, nil
 }
 
-func GenerateNestedValues(rowIndex int, seedIndex int, rng *rand.Rand, jsonFields []models.Field, cache []map[string]any) (map[string]string, error) {
-	out := make(map[string]string, len(jsonFields))
-	for _, f := range jsonFields {
+// in package json
+
+func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []models.Field, cache []map[string]any, fieldSources map[string][]map[string]any) (map[string]string, error) {
+
+	values := make(map[string]string)
+	generated := make(map[string]string)
+
+	for _, field := range fields {
 		var value any
-		key := f.Name
-		if f.Alias != "" {
-			key = f.Alias
+		var key string
+
+		if field.Alias != "" {
+			key = field.Alias
+		} else {
+			key = field.Name
 		}
 
-		if f.Type == "" && f.Value != "" {
-			out[f.Name] = fmt.Sprint(f.Value)
-			continue
-		}
+		injected := false
 
-		if f.Type == "iterator" {
-			value = rowIndex
-			out[f.Name] = fmt.Sprint(value)
-			continue
-		}
-
-		if f.Seed && len(cache) > 0 {
-			if seedIndex < len(cache) {
-				value = cache[seedIndex][key]
-				log.Debug("seeding json attribute", "field", f.Name, "value", fmt.Sprint(value))
-			} else {
-				log.Warn("seed index out of range for json cache", "field", f.Name, "idx", seedIndex, "len", len(cache))
+		// 1) CSV source injection for nested fields (same as top-level)
+		if field.Source != "" && strings.Contains(field.Source, ".csv") {
+			if rows, ok := fieldSources[field.Source]; ok && len(rows) > 0 {
+				idx := seedIndex % len(rows)
+				if row := rows[idx]; row != nil {
+					if val, ok := row[key]; ok && val != nil {
+						value = val
+						injected = true
+					}
+				}
 			}
 		}
 
-		if !f.Seed {
-			factory, found := fakers.GetFakerByName(f.Type)
-			if !found {
-				return nil, fmt.Errorf("faker not found for type: %s", f.Type)
-			}
-			faker, err := factory(f, rng)
-			if err != nil {
-				log.Error("Error creating faker", "field_name", f.Name, "type", f.Type)
-				return nil, fmt.Errorf("%w", err)
-			}
-			var errGen error
-			value, errGen = faker.Generate()
-			if errGen != nil {
-				return nil, fmt.Errorf("error generating value for field %s: %w", f.Name, errGen)
+		// 2) Seed from entity-level cache (if present)
+		if !injected && field.Seed && len(cache) > 0 {
+			idx := seedIndex % len(cache)
+			if row := cache[idx]; row != nil {
+				if val, ok := row[key]; ok && val != nil {
+					value = val
+					injected = true
+				}
 			}
 		}
 
-		out[f.Name] = fmt.Sprint(value)
+		// 3) Fallback: faker / static / other field types
+		if !injected {
+			switch {
+			case field.Type == "":
+				value = field.Value
+			case field.Type == "iterator":
+				value = rowIndex
+			default:
+				// reuse your faker logic here if you want JSON nested fields
+				// to also support synthetic values
+				factory, found := fakers.GetFakerByName(field.Type)
+				if !found {
+					return nil, fmt.Errorf("faker not found for nested field type: %s", field.Type)
+				}
+				faker, err := factory(field, rng)
+				if err != nil {
+					return nil, fmt.Errorf("create faker for nested field %s: %w", field.Name, err)
+				}
+				v, err := faker.Generate()
+				if err != nil {
+					return nil, fmt.Errorf("generate value for nested field %s: %w", field.Name, err)
+				}
+				value = v
+			}
+		}
+
+		var s string
+		if value == nil {
+			s = ""
+		} else {
+			s = fmt.Sprint(value)
+		}
+
+		generated[field.Name] = s
+		values[field.Name] = s
 	}
 
-	return out, nil
-}
-
-var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
-
-func RenderJSONCell(cj *CompiledJSON, kv map[string]string) (string, error) {
-
-	buf := bufPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufPool.Put(buf)
-
-	if err := cj.Tpl.Execute(buf, kv); err != nil {
-		return "", fmt.Errorf("execute template: %w", err)
-	}
-
-	var anyJSON any
-	if err := json.Unmarshal(buf.Bytes(), &anyJSON); err != nil {
-		return "", fmt.Errorf("invalid json from template: %w\nrendered: %s", err, buf.String())
-	}
-
-	compact, err := json.Marshal(anyJSON)
-	if err != nil {
-		return "", fmt.Errorf("compact json: %w", err)
-	}
-	return string(compact), nil
+	return values, nil
 }

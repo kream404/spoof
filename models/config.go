@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
@@ -83,6 +85,28 @@ type Entity struct {
 
 type FileConfig struct {
 	Files []Entity `json:"files"`
+}
+
+type Bundle struct {
+	Files []BundleFile `json:"files"`
+}
+
+type Placeholder struct {
+	Key  string
+	Type string
+}
+
+func (p Placeholder) MarshalJSON() ([]byte, error) {
+	s := "${" + p.Key
+	if p.Type != "" {
+		s += ":" + p.Type
+	}
+	s += "}"
+	return json.Marshal(s)
+}
+
+type BundleFile struct {
+	Source string `json:"source"`
 }
 
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
