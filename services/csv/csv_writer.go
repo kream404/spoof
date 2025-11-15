@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/csv"
+	jsonstd "encoding/json"
 	"fmt"
 	"hash/fnv"
 	"math/rand"
@@ -379,13 +380,10 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					return nil, err
 				}
 
-				repeat := field.Repeat
-				if repeat <= 0 {
-					repeat = 1
-				}
+				raw := strings.TrimSpace(cj.Raw)
+				rootIsArray := strings.HasPrefix(raw, "[")
 
-				if repeat == 1 {
-					// old behaviour: single JSON object
+				if !rootIsArray {
 					kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources)
 					if err != nil {
 						return nil, err
@@ -395,28 +393,46 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					if err != nil {
 						return nil, err
 					}
+
 					value = s
-				} else {
-
-					parts := make([]string, 0, repeat)
-
-					for j := 0; j < repeat; j++ {
-						log.Debug("repeating json generation", "count", j)
-						elemSeedIndex := seedIndex + j
-						kv, err := json.GenerateNestedValues(rowIndex, elemSeedIndex, rng, cj.Fields, cache, fieldSources)
-						if err != nil {
-							return nil, fmt.Errorf("generate nested values for %s: %w", field.Name, err)
-						}
-
-						s, err := json.RenderJSONCell(cj.Raw, kv)
-						if err != nil {
-							return nil, fmt.Errorf("render json cell for %s: %w", field.Name, err)
-						}
-
-						parts = append(parts, s)
-					}
-					value = "[" + strings.Join(parts, ",") + "]"
+					break
 				}
+
+				repeat := field.Repeat
+				if repeat <= 0 {
+					repeat = 1
+				}
+
+				items := make([]any, 0, repeat)
+
+				for j := 0; j < repeat; j++ {
+					kv, err := json.GenerateNestedValues(rowIndex, seedIndex+j, rng, cj.Fields, cache, fieldSources)
+					if err != nil {
+						return nil, err
+					}
+
+					rendered, err := json.RenderJSONCell(cj.Raw, kv)
+					if err != nil {
+						return nil, err
+					}
+
+					var arr []any
+					if err := jsonstd.Unmarshal([]byte(rendered), &arr); err != nil {
+						return nil, fmt.Errorf("invalid rendered JSON for %s (expected array root): %w\nrendered: %s",
+							field.Name, err, rendered)
+					}
+
+					if len(arr) > 0 {
+						items = append(items, arr[0])
+					}
+				}
+
+				out, err := jsonstd.Marshal(items)
+				if err != nil {
+					return nil, err
+				}
+
+				value = string(out)
 
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)
