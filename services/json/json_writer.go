@@ -39,13 +39,7 @@ func WriteTemplate(path string, contents string, overwrite bool) (string, error)
 
 var placeholderRe = regexp.MustCompile(`"\$\{([a-zA-Z0-9_]+)(?::([a-zA-Z0-9_]+))?\}"`)
 
-// RenderJSONCell takes a JSON template string containing placeholders like
-//
-//	"${id:number}", "${customerid:uuid}", "${name:string}"
-//
-// and a map of values, and returns compact valid JSON.
 func RenderJSONCell(tpl string, kv map[string]string) (string, error) {
-	// 1) Substitute placeholders with JSON literals
 	rendered := placeholderRe.ReplaceAllFunc([]byte(tpl), func(match []byte) []byte {
 		sub := placeholderRe.FindSubmatch(match)
 		if len(sub) < 2 {
@@ -67,7 +61,6 @@ func RenderJSONCell(tpl string, kv map[string]string) (string, error) {
 		return []byte(renderJSONLiteral(val, typ))
 	})
 
-	// 2) Validate JSON and compact it
 	var anyJSON any
 	if err := json.Unmarshal(rendered, &anyJSON); err != nil {
 		return "", fmt.Errorf("invalid json after placeholder substitution: %w\nrendered: %s", err, rendered)
@@ -84,7 +77,6 @@ func RenderJSONCell(tpl string, kv map[string]string) (string, error) {
 func renderJSONLiteral(raw, typ string) string {
 	typ = strings.ToLower(strings.TrimSpace(typ))
 
-	// string-like types: always quote
 	if typ == "" ||
 		typ == "string" ||
 		typ == "email" ||
@@ -150,9 +142,6 @@ func PerformTokenReplacement(raw []byte, vars map[string]string) ([]byte, error)
 	return []byte(s), nil
 }
 
-// MarshalTemplate takes an inferred template AST (maps, arrays, models.Placeholder, etc.)
-// and pretty-prints it as JSON. models.Placeholder.MarshalJSON ensures placeholders
-// render as "${key:type}" strings.
 func MarshalTemplate(v any) ([]byte, error) {
 	return json.MarshalIndent(v, "", "  ")
 }
