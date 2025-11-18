@@ -230,6 +230,53 @@ Copies the value of another field. Can optionally modify numeric inputs by suppl
 - `modifier`: allows transformation (e.g., numeric modification).
 
 ---
+
+### JSON
+JSON generation requires a template which denotes the object structure, field keys and how each field should be rendered in the output file. This is to allow numeric fields as well as strings. If no type is provided the field will be rendered as a string.
+
+A sample template and configuration can be seen below.
+
+
+#### Template
+```json
+{
+  "id": "${id:string}",
+  "createdAt": "${createdat:string}",
+  "amount": "${id:number}"
+
+}
+```
+
+#### Field configuration
+```json
+{
+  "name": "json_object",
+  "type": "json",
+  "template": "templates/template.json",
+  "fields": [
+    {
+      "name": "id",
+      "type": "uuid"
+    },
+    {
+      "name": "createdat",
+      "type": "timestamp",
+      "format": "2006-01-02T15:04:05",
+      "function": "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale"
+    },
+    {
+      "name": "amount",
+      "format": "2",
+      "min": 1,
+      "max": 250,
+      "function": "exponential:scale=9,side=low"
+    },
+  ]
+}
+```
+
+---
+
 ## Functions
 Function strings can be used to drive how a supported faker generates its values. This can be used to create psuedo-trends accross the output file
 

@@ -73,23 +73,10 @@ func RenderJSONCell(tpl string, kv map[string]string) (string, error) {
 	return string(compact), nil
 }
 
-// renderJSONLiteral converts a raw string + type into a valid JSON literal.
 func renderJSONLiteral(raw, typ string) string {
-	typ = strings.ToLower(strings.TrimSpace(typ))
+	t := strings.ToLower(strings.TrimSpace(typ))
 
-	if typ == "" ||
-		typ == "string" ||
-		typ == "email" ||
-		typ == "uuid" ||
-		typ == "timestamp" ||
-		typ == "alphanumeric" ||
-		typ == "range" {
-		b, _ := json.Marshal(raw)
-		return string(b)
-	}
-
-	switch typ {
-	case "number", "int", "integer", "decimal", "float":
+	if t == "number" {
 		s := strings.TrimSpace(raw)
 		if s == "" {
 			return "0"
@@ -99,21 +86,11 @@ func renderJSONLiteral(raw, typ string) string {
 			return string(b)
 		}
 		return s
-
-	case "bool", "boolean":
-		s := strings.ToLower(strings.TrimSpace(raw))
-		if s == "true" || s == "false" {
-			return s
-		}
-		// fallback to quoted string
-		b, _ := json.Marshal(raw)
-		return string(b)
-
-	default:
-		// unknown type: safest to treat as string
-		b, _ := json.Marshal(raw)
-		return string(b)
 	}
+
+	// default: treat as string
+	b, _ := json.Marshal(raw)
+	return string(b)
 }
 
 func PerformTokenReplacement(raw []byte, vars map[string]string) ([]byte, error) {

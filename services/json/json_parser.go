@@ -131,13 +131,11 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 	}
 
 	return &CompiledJSON{
-		Raw:    string(b), // <-- store raw JSON template
+		Raw:    string(b),
 		Fields: flds,
 		Path:   abs,
 	}, nil
 }
-
-// in package json
 
 func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []models.Field, cache []map[string]any, fieldSources map[string][]map[string]any) (map[string]string, error) {
 
@@ -156,7 +154,6 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 
 		injected := false
 
-		// 1) CSV source injection for nested fields (same as top-level)
 		if field.Source != "" && strings.Contains(field.Source, ".csv") {
 			if rows, ok := fieldSources[field.Source]; ok && len(rows) > 0 {
 				idx := seedIndex % len(rows)
@@ -169,7 +166,6 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 			}
 		}
 
-		// 2) Seed from entity-level cache (if present)
 		if !injected && field.Seed && len(cache) > 0 {
 			idx := seedIndex % len(cache)
 			if row := cache[idx]; row != nil {
@@ -180,7 +176,6 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 			}
 		}
 
-		// 3) Fallback: faker / static / other field types
 		if !injected {
 			switch {
 			case field.Type == "":

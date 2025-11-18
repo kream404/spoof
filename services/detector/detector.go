@@ -330,10 +330,16 @@ func inferJSONArray(ctx *infCtx, arr []any, path []string) (any, []models.Field)
 func inferJSONLeaf(ctx *infCtx, v any, path []string) (any, []models.Field) {
 	key := makeKey(ctx, path)
 	mf := inferFieldFromValue(key, v)
+	phType := ""
+	if mf.Type == "number" {
+		phType = "number"
+	} else {
+		phType = "string"
+	}
 
 	ph := models.Placeholder{
 		Key:  key,
-		Type: mf.Type,
+		Type: phType,
 	}
 
 	return ph, []models.Field{mf}
