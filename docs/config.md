@@ -105,6 +105,32 @@ A `postprocessing` block can be provided in the json config to allow you to uplo
   },
 ```
 
+Postprocessing also supports inserting/deleting the generated values to/from a database. When deleting from a database you must pass the type of the key you wish to delete on. To point it at a database you must pass a `connection profile`. To carry out a destrucive operation on the database you must pass the `--force` flag.
+
+```json
+  "postprocess": {
+    "enabled": true,
+    "operation": "insert",
+    "location": "database",
+    "schema": "account",
+    "table": "customer",
+    "headers": true
+  },
+```
+
+```json
+  "postprocess": {
+    "enabled": true,
+    "operation": "delete",
+    "location": "database",
+    "schema": "account",
+    "table": "customer",
+    "key": "id",
+    "type": "uuid",
+    "headers": true
+  },
+```
+
 ## Field Types
 
 When configuring your CSV generation, each field in the `fields` array represents a column with specific data logic. The name provided will be the name of the column in the output file.
@@ -232,7 +258,7 @@ Copies the value of another field. Can optionally modify numeric inputs by suppl
 ---
 
 ### JSON
-JSON generation requires a template which denotes the object structure, field keys and how each field should be rendered in the output file. This is to allow numeric fields as well as strings. If no type is provided the field will be rendered as a string.
+JSON generation requires a template which denotes the object structure, field keys and how each field should be rendered in the output file. This is to allow numeric fields as well as strings. If no type is provided the field will be rendered as a string. You can also seed JSON fields using the same syntax as a regular field.
 
 A sample template and configuration can be seen below.
 
@@ -270,6 +296,12 @@ A sample template and configuration can be seen below.
       "min": 1,
       "max": 250,
       "function": "exponential:scale=9,side=low"
+    },
+    {
+      "name": "accountid",
+      "seed": true,
+      "source": "output/accounts.csv",
+      "alias": "id",
     },
   ]
 }
