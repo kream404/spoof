@@ -21,12 +21,33 @@ type NumberFaker struct {
 }
 
 func (f *NumberFaker) Generate() (any, error) {
-	// If they asked for a fixed-length numeric string, keep previous behaviour
 	if f.length != 0 {
+		if f.min != 0 || f.max != 0 {
+			lo := int(f.min)
+			hi := int(f.max)
+			if hi < lo {
+				lo, hi = hi, lo
+			}
+
+			n := lo
+			if hi > lo {
+				span := hi - lo + 1
+				var r int
+				if f.rng != nil {
+					r = f.rng.Intn(span)
+				} else {
+					r = rand.Intn(span)
+				}
+				n = lo + r
+			}
+
+			s := strconv.Itoa(n)
+			return s, nil
+		}
+
 		return f.GenerateRandomNumberOfLength(f.length), nil
 	}
 
-	// parse function string
 	name, params := parseFunctionString(strings.TrimSpace(f.function))
 
 	// Special case: constant:value as absolute numeric value

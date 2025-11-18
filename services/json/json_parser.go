@@ -3,10 +3,13 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	log "github.com/kream404/spoof/services/logger"
 )
@@ -40,13 +43,11 @@ func PerformVariableInjection(config models.FileConfig) (*models.FileConfig, err
 	}
 	jsonStr := string(raw)
 
-	// Replace each provided var
 	for k, v := range vars {
 		re := regexp.MustCompile(`\{\{\s*` + regexp.QuoteMeta(k) + `\s*\}\}`)
 		jsonStr = re.ReplaceAllString(jsonStr, v)
 	}
 
-	// Fail if any placeholders remain
 	if unresolved := tokenRE.FindAllStringSubmatch(jsonStr, -1); len(unresolved) > 0 {
 		missing := make([]string, 0, len(unresolved))
 		seen := map[string]struct{}{}
@@ -61,7 +62,6 @@ func PerformVariableInjection(config models.FileConfig) (*models.FileConfig, err
 		return nil, fmt.Errorf("missing injected variable(s): %s", strings.Join(missing, ", "))
 	}
 
-	// Back into the struct
 	var out models.FileConfig
 	if err := json.Unmarshal([]byte(jsonStr), &out); err != nil {
 		return nil, fmt.Errorf("unmarshal after injection: %w", err)
@@ -98,4 +98,117 @@ func ToJSONString(data any) (string, error) {
 		return "", err
 	}
 	return string(jsonBytes), nil
+}
+
+type CompiledJSON struct {
+	Raw    string // raw JSON template text
+	Fields []models.Field
+	Path   string
+}
+
+func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, error) {
+	tpath := strings.TrimSpace(templatePath)
+	if tpath == "" && strings.TrimSpace(spec.Template) != "" {
+		tpath = spec.Template
+	}
+	if tpath == "" {
+		return nil, fmt.Errorf("json: missing template path for field '%s'", spec.Name)
+	}
+
+	abs, err := filepath.Abs(tpath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve template path: %w", err)
+	}
+
+	b, err := os.ReadFile(abs)
+	if err != nil {
+		return nil, fmt.Errorf("read template: %w", err)
+	}
+
+	flds := spec.Fields
+	if len(flds) == 0 {
+		return nil, fmt.Errorf("json: no nested fields for '%s' (expected top-level 'fields')", spec.Name)
+	}
+
+	return &CompiledJSON{
+		Raw:    string(b),
+		Fields: flds,
+		Path:   abs,
+	}, nil
+}
+
+func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []models.Field, cache []map[string]any, fieldSources map[string][]map[string]any) (map[string]string, error) {
+
+	values := make(map[string]string)
+	generated := make(map[string]string)
+
+	for _, field := range fields {
+		var value any
+		var key string
+
+		if field.Alias != "" {
+			key = field.Alias
+		} else {
+			key = field.Name
+		}
+
+		injected := false
+
+		if field.Source != "" && strings.Contains(field.Source, ".csv") {
+			if rows, ok := fieldSources[field.Source]; ok && len(rows) > 0 {
+				idx := seedIndex % len(rows)
+				if row := rows[idx]; row != nil {
+					if val, ok := row[key]; ok && val != nil {
+						value = val
+						injected = true
+					}
+				}
+			}
+		}
+
+		if !injected && field.Seed && len(cache) > 0 {
+			idx := seedIndex % len(cache)
+			if row := cache[idx]; row != nil {
+				if val, ok := row[key]; ok && val != nil {
+					value = val
+					injected = true
+				}
+			}
+		}
+
+		if !injected {
+			switch {
+			case field.Type == "":
+				value = field.Value
+			case field.Type == "iterator":
+				value = rowIndex
+			default:
+				factory, found := fakers.GetFakerByName(field.Type)
+				if !found {
+					return nil, fmt.Errorf("faker not found for nested field type: %s", field.Type)
+				}
+				faker, err := factory(field, rng)
+				if err != nil {
+					return nil, fmt.Errorf("create faker for nested field %s: %w", field.Name, err)
+				}
+				v, err := faker.Generate()
+				if err != nil {
+					return nil, fmt.Errorf("generate value for nested field %s: %w", field.Name, err)
+				}
+				value = v
+			}
+		}
+
+		var s string
+		if value == nil {
+			s = ""
+		} else {
+			s = fmt.Sprint(value)
+		}
+
+		generated[field.Name] = s
+		values[field.Name] = s
+	}
+
+	return values, nil
 }
