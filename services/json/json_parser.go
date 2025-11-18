@@ -183,8 +183,6 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 			case field.Type == "iterator":
 				value = rowIndex
 			default:
-				// reuse your faker logic here if you want JSON nested fields
-				// to also support synthetic values
 				factory, found := fakers.GetFakerByName(field.Type)
 				if !found {
 					return nil, fmt.Errorf("faker not found for nested field type: %s", field.Type)
