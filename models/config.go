@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
@@ -52,7 +54,7 @@ type CacheConfig struct {
 type Field struct {
 	Name       string   `json:"name"`
 	Alias      string   `json:"alias,omitempty"`
-	Type       string   `json:"type"`
+	Type       string   `json:"type,omitempty"`
 	Modifier   *float64 `json:"modifier,omitempty"`
 	AutoInc    bool     `json:"auto_increment,omitempty"`
 	ForeignKey string   `json:"foreign_key,omitempty"`
@@ -67,8 +69,11 @@ type Field struct {
 	Seed       bool     `json:"seed,omitempty"`
 	Function   string   `json:"function,omitempty"`
 	Source     string   `json:"source,omitempty"`
+	Template   string   `json:"template,omitempty"`
 	Rate       *int     `json:"rate,omitempty,string"`
 	Regex      string   `json:"regex,omitempty"`
+	Fields     []Field  `json:"fields,omitempty"` // top-level (your current config)
+	Repeat     int      `json:"repeat,omitempty"`
 }
 
 type Entity struct {
@@ -81,6 +86,28 @@ type Entity struct {
 
 type FileConfig struct {
 	Files []Entity `json:"files"`
+}
+
+type Bundle struct {
+	Files []BundleFile `json:"files"`
+}
+
+type Placeholder struct {
+	Key  string
+	Type string
+}
+
+func (p Placeholder) MarshalJSON() ([]byte, error) {
+	s := "${" + p.Key
+	if p.Type != "" {
+		s += ":" + p.Type
+	}
+	s += "}"
+	return json.Marshal(s)
+}
+
+type BundleFile struct {
+	Source string `json:"source"`
 }
 
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
