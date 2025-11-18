@@ -224,6 +224,14 @@ If you need to generate a random number of a given length, you can pass a `lengt
 
 ---
 
+### `countrycode`
+
+Picks at random from the list of `ISO 3166-1 alpha-3` three letter country codes.
+
+```json
+{ "name": "amount", "type": "countrycode"},
+```
+
 ### `timestamp`
 
 Creates a timestamp using the current time formatted with Go-style time syntax. You can optionally pass an interval to offset the time. This is provided as seconds and supports both positive and negative values.  This is not currently deterministic.
