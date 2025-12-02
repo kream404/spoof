@@ -118,7 +118,7 @@ func Delete(ctx context.Context, file models.Entity) error {
 
 func generateCSV(file models.Entity, outDir string) (string, error) {
 	var cacheIndex, rowIndex = 0, 1
-
+	log.Info("Generating file", "file", file.Config.FileName)
 	cache, err := LoadCache(file.CacheConfig)
 	if err != nil {
 		return "", fmt.Errorf("could not load cache: %w", err)
@@ -373,6 +373,27 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 
 			case field.Type == "":
 				value = field.Value
+
+			case field.Type == "foreach":
+				vals := field.Values
+				raw := strings.TrimSpace(vals)
+				parts := strings.Split(raw, ",")
+				cleaned := make([]string, 0, len(parts))
+				for _, p := range parts {
+					s := strings.TrimSpace(p)
+					if s != "" {
+						cleaned = append(cleaned, s)
+					}
+				}
+
+				if len(cleaned) == 0 {
+					log.Warn("foreach field has only empty/whitespace values; emitting empty string", "field", field.Name)
+					value = ""
+					break
+				}
+
+				idx := rowIndex % len(cleaned)
+				value = cleaned[idx]
 
 			case field.Type == "json":
 				cj, err := json.CompileJSONField(field, field.Template)

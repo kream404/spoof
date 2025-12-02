@@ -75,6 +75,7 @@ func isTimestamp(s string) (bool, string) {
 		"02-01-06",
 		"02-01-06 15:04:05",
 		"15:04:05",
+		"15:04:05Z",
 	}
 
 	for _, layout := range formats {
@@ -266,6 +267,25 @@ func isJSON(s string) (bool, any) {
 	}
 }
 
+func isFreeText(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+
+	if len(s) > 80 {
+		return true
+	}
+	if strings.ContainsAny(s, " \t\n") {
+		return true
+	}
+	if strings.ContainsAny(s, "<>") {
+		return true
+	}
+
+	return false
+}
+
 //
 // ───────────────────────── JSON INFERENCE ─────────────────────────────
 //
@@ -427,7 +447,7 @@ func InferField(name string, col []string) (models.Field, error) {
 	// 7) Number
 	if ok, decimals, length := isNumber(sample); ok {
 		if length == 2 {
-			return models.Field{Name: name, Type: "number", Length: length, Min: 1, Max: 99}, nil
+			return models.Field{Name: name, Type: "number", Min: 1, Max: 99}, nil
 		}
 		if length > 0 {
 			return models.Field{Name: name, Type: "number", Length: length}, nil
@@ -447,6 +467,22 @@ func InferField(name string, col []string) (models.Field, error) {
 		return models.Field{Name: name, Type: "number"}, nil
 	}
 
+	// 10) Small range (categorical)
+	if ok, set := isRange(col, len(col)); ok {
+		return models.Field{
+			Name:   name,
+			Type:   "range",
+			Values: strings.Join(set, ", "),
+		}, nil
+	}
+
+	if isFreeText(sample) {
+		return models.Field{
+			Name:  name,
+			Value: sample,
+		}, nil
+	}
+
 	// 8) Iterator
 	if isIterator(col) {
 		return models.Field{Name: name, Type: "iterator"}, nil
@@ -461,17 +497,6 @@ func InferField(name string, col []string) (models.Field, error) {
 			Length: L,
 		}, nil
 	}
-
-	// 10) Small range (categorical)
-	if ok, set := isRange(col, len(col)); ok {
-		return models.Field{
-			Name:   name,
-			Type:   "range",
-			Values: strings.Join(set, ", "),
-		}, nil
-	}
-
-	// 11) Fallback
 	return models.Field{Name: name, Type: "unknown"}, nil
 }
 
