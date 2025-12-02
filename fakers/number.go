@@ -77,7 +77,7 @@ func (f *NumberFaker) formatValue(val float64) (any, error) {
 }
 
 func (f *NumberFaker) GenerateRandomNumberOfLength(length int) string {
-	const charset = "0123456789"
+	const charset = "123456789"
 	result := make([]byte, length)
 	for i := range result {
 		idx := 0
@@ -86,7 +86,6 @@ func (f *NumberFaker) GenerateRandomNumberOfLength(length int) string {
 		} else {
 			idx = rand.Intn(len(charset))
 		}
-		// keep behaviour: leading zero allowed; change if you want non-zero leading digits
 		result[i] = charset[idx]
 	}
 	return string(result)
