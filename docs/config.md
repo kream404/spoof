@@ -208,6 +208,16 @@ Selects a random value from a defined set of options.
 
 ---
 
+### `foreach`
+
+Iterates through a defined set of options sequentially. Loops back to the start if the row count exceeds the length of values. Can handle both numbers and strings.
+
+```json
+{ "name": "customerstatusid", "type": "foreach", "values": "ACTIVE, INACTIVE, SUSPENDED, CLOSED" }
+```
+
+---
+
 ### `number`
 
 Generates a random floating-point number between a minimum and maximum. An optional format can be passed to specify the number of decimal places. This will default to 0 if not provided.
