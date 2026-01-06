@@ -12,6 +12,7 @@ import (
 	"github.com/kream404/spoof/fakers"
 	"github.com/kream404/spoof/models"
 	log "github.com/kream404/spoof/services/logger"
+	"github.com/shopspring/decimal"
 )
 
 func LoadConfig(filepath string) (*models.FileConfig, error) {
@@ -137,7 +138,7 @@ func CompileJSONField(spec models.Field, templatePath string) (*CompiledJSON, er
 	}, nil
 }
 
-func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []models.Field, cache []map[string]any, fieldSources map[string][]map[string]any) (map[string]string, error) {
+func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []models.Field, cache []map[string]any, fieldSources map[string][]map[string]any, parentGenerated map[string]string) (map[string]string, error) {
 
 	values := make(map[string]string)
 	generated := make(map[string]string)
@@ -178,10 +179,56 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 
 		if !injected {
 			switch {
+			case field.Type == "reflection":
+				if field.Target == "" {
+					return nil, fmt.Errorf("You must provide a 'target' to use reflection")
+				}
+
+				// Prefer nested fields first, then fall back to parent scope
+				targetValue, ok := generated[field.Target]
+				if !ok && parentGenerated != nil {
+					targetValue, ok = parentGenerated[field.Target]
+				}
+				if !ok {
+					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+				}
+
+				out := targetValue
+				if field.Modifier != nil {
+					modified, err := modifier(targetValue, *field.Modifier)
+					if err != nil {
+						return nil, err
+					}
+					out = modified
+				}
+
+				values[field.Name] = out
+				generated[field.Name] = out
+				continue
 			case field.Type == "":
 				value = field.Value
 			case field.Type == "iterator":
 				value = rowIndex
+			case field.Type == "foreach":
+				vals := field.Values
+				raw := strings.TrimSpace(vals)
+				parts := strings.Split(raw, ",")
+				cleaned := make([]string, 0, len(parts))
+				for _, p := range parts {
+					s := strings.TrimSpace(p)
+					if s != "" {
+						cleaned = append(cleaned, s)
+					}
+				}
+
+				if len(cleaned) == 0 {
+					log.Warn("foreach field has only empty/whitespace values; emitting empty string", "field", field.Name)
+					value = ""
+					break
+				}
+
+				idx := rowIndex % len(cleaned)
+				value = cleaned[idx]
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)
 				if !found {
@@ -211,4 +258,19 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 	}
 
 	return values, nil
+}
+
+func modifier(raw string, modifier float64) (string, error) {
+	decimalValue, err := decimal.NewFromString(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid number: %v", err)
+	}
+	modifiedValue := decimalValue.Mul(decimal.NewFromFloat(modifier))
+
+	decimals := 0
+	if dot := strings.Index(raw, "."); dot != -1 {
+		decimals = len(raw) - dot - 1
+	}
+
+	return modifiedValue.StringFixed(int32(decimals)), nil
 }

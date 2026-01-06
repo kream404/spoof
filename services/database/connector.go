@@ -273,12 +273,20 @@ func (d *DBConnector) DeleteRowsByKeyFromFile(path string, config models.Entity)
 	if d == nil || d.DB == nil {
 		return 0, errors.New("database connection not initialized")
 	}
+
 	pp := config.Postprocess
 	if pp.Table == "" || pp.Schema == "" {
 		return 0, errors.New("schema and table are required")
 	}
 	if pp.Key == "" || pp.Type == "" {
 		return 0, errors.New("postprocess.key and postprocess.type are required")
+	}
+
+	// CSV key (header) and DB key (column)
+	csvKey := strings.TrimSpace(pp.Key)
+	dbKey := csvKey
+	if strings.TrimSpace(pp.Alias) != "" {
+		dbKey = strings.TrimSpace(pp.Alias)
 	}
 
 	file, err := os.Open(path)
@@ -312,19 +320,20 @@ func (d *DBConnector) DeleteRowsByKeyFromFile(path string, config models.Entity)
 		return 0, errors.New("need header or explicit Columns to locate key")
 	}
 
+	// Locate CSV key column (using csvKey, not alias)
 	keyIdx := -1
 	for i, c := range columns {
-		if strings.EqualFold(c, pp.Key) {
+		if strings.EqualFold(c, csvKey) {
 			keyIdx = i
 			break
 		}
 	}
 	if keyIdx < 0 {
-		return 0, fmt.Errorf("key column %q not found in CSV", pp.Key)
+		return 0, fmt.Errorf("key column %q not found in CSV", csvKey)
 	}
 
 	fullTable := quoteIdent(pp.Schema) + "." + quoteIdent(pp.Table)
-	keyIdent := quoteIdent(pp.Key)
+	dbKeyIdent := quoteIdent(dbKey) // DB column name (alias or key)
 	keyType := strings.TrimSpace(pp.Type)
 
 	batchSize := pp.BatchSize
@@ -351,20 +360,22 @@ func (d *DBConnector) DeleteRowsByKeyFromFile(path string, config models.Entity)
 		if batchRowCount == 0 {
 			return nil
 		}
-		// DELETE ... USING (VALUES ($1::<type>), ...) AS v(key) WHERE t.key = v.key
+		// DELETE ... USING (VALUES ($1::<type>), ...) AS v(dbKey) WHERE t.dbKey = v.dbKey
 		query := fmt.Sprintf(
 			`DELETE FROM %s AS t USING (VALUES %s) AS v(%s) WHERE t.%s = v.%s`,
 			fullTable,
 			strings.Join(valueGroups, ", "),
-			keyIdent,
-			keyIdent, keyIdent,
+			dbKeyIdent,
+			dbKeyIdent, dbKeyIdent,
 		)
+
 		res, err := tx.ExecContext(ctx, query, args...)
 		if err != nil {
 			return err
 		}
 		affected, _ := res.RowsAffected()
 		rowsDeleted += int(affected)
+
 		// reset
 		args = args[:0]
 		valueGroups = valueGroups[:0]
@@ -383,7 +394,7 @@ func (d *DBConnector) DeleteRowsByKeyFromFile(path string, config models.Entity)
 		}
 		if keyIdx >= len(rec) {
 			_ = tx.Rollback()
-			return 0, fmt.Errorf("row missing key column %q", pp.Key)
+			return 0, fmt.Errorf("row missing key column %q", csvKey)
 		}
 
 		val := strings.TrimSpace(rec[keyIdx])

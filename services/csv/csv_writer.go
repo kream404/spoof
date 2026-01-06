@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,8 +28,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func ProcessFiles(config models.FileConfig, force bool) error {
+func ProcessFiles(config models.FileConfig, force bool, dryRun bool) error {
 	ctx := context.Background()
+	acc := &OutputAccumulator{}
+
 	for _, file := range config.Files {
 		if file.Config.FileCount <= 0 {
 			file.Config.FileCount = 1
@@ -38,16 +41,22 @@ func ProcessFiles(config models.FileConfig, force bool) error {
 			iterFile := file
 			iterFile.Config.FileName = withIndexSuffix(file.Config.FileName, i, file.Config.FileCount)
 
-			if err := processOneFile(ctx, iterFile, "output", force); err != nil {
+			if err := processOneFile(ctx, iterFile, "output", force, dryRun, acc); err != nil {
 				log.Error("file processing failed", "file", iterFile.Config.FileName, "err", err)
 				return err
 			}
 		}
 	}
+
+	if err := acc.FlushToStdout(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool) error {
+func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool, dryRun bool, acc *OutputAccumulator) error {
+
 	if err := validateEntityConfig(file); err != nil {
 		return fmt.Errorf("%w", err)
 	}
@@ -71,11 +80,17 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 	var localPath string
 
 	if file.Fields != nil {
-		localPath, err = generateCSV(file, outDir)
+		localPath, err = generateCSV(file, outDir, acc)
+
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to generate CSV for %q: %w", file.Config.FileName, err)
+	}
+
+	if dryRun {
+		log.Info("Dry run enabled; skipping post-processing steps", "file", file.Config.FileName)
+		return nil
 	}
 
 	if err := Delete(ctx, file); err != nil {
@@ -116,7 +131,7 @@ func Delete(ctx context.Context, file models.Entity) error {
 	return nil
 }
 
-func generateCSV(file models.Entity, outDir string) (string, error) {
+func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (string, error) {
 	var cacheIndex, rowIndex = 0, 1
 	log.Info("Generating file", "file", file.Config.FileName)
 	cache, err := LoadCache(file.CacheConfig)
@@ -154,11 +169,17 @@ func generateCSV(file models.Entity, outDir string) (string, error) {
 	s.Start()
 
 	for i := 0; i < file.Config.RowCount; i++ {
-		row, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
+		row, generated, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
 		if err != nil {
 			s.Stop()
 			return "", fmt.Errorf("generate row: %w", err)
 		}
+
+		if err := emitOutputHooks(file, generated, acc); err != nil {
+			s.Stop()
+			return "", fmt.Errorf("output hook: %w", err)
+		}
+
 		if err := writer.Write(row); err != nil {
 			s.Stop()
 			return "", fmt.Errorf("CSV write row: %w", err)
@@ -315,7 +336,7 @@ func makeOutputFile(baseDir, fileName string) (*os.File, string, error) {
 	return file, outputFile, nil
 }
 
-func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, error) {
+func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, map[string]string, error) {
 	var record []string
 	generatedFields := make(map[string]string)
 
@@ -339,8 +360,6 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					log.Warn("Key not found in preloaded source row; falling back",
 						"key", key, "field", field.Name, "source", field.Source)
 				}
-			} else {
-				// log.Debug("No preloaded rows for source; skipping injection", "source", field.Source)
 			}
 		}
 
@@ -354,16 +373,16 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				if !ok {
 					log.Error("Reflection error", "field_name", field.Name)
 					if field.Target == "" {
-						return nil, fmt.Errorf("You must provide a 'target' to use reflection")
+						return nil, nil, fmt.Errorf("You must provide a 'target' to use reflection")
 					}
-					return nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
+					return nil, nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 				}
 				value = targetValue
 				if field.Modifier != nil {
 					modifiedValue, err := modifier(targetValue, *field.Modifier)
 					if err != nil {
 						log.Error("modifier ignored: not a valid number", "target", targetValue)
-						return nil, err
+						return nil, nil, err
 					}
 					value = modifiedValue
 				}
@@ -398,21 +417,21 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 			case field.Type == "json":
 				cj, err := json.CompileJSONField(field, field.Template)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				raw := strings.TrimSpace(cj.Raw)
 				rootIsArray := strings.HasPrefix(raw, "[")
 
 				if !rootIsArray {
-					kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources)
+					kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources, generatedFields)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 					s, err := json.RenderJSONCell(cj.Raw, kv)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 					value = s
@@ -427,20 +446,32 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				items := make([]any, 0, repeat)
 
 				for j := 0; j < repeat; j++ {
-					kv, err := json.GenerateNestedValues(rowIndex, seedIndex+j, rng, cj.Fields, cache, fieldSources)
+					iterSeed := seedIndex + j
+
+					kv, err := json.GenerateNestedValues(
+						rowIndex,
+						iterSeed,
+						rng,
+						cj.Fields,
+						cache,
+						fieldSources,
+						generatedFields,
+					)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 					rendered, err := json.RenderJSONCell(cj.Raw, kv)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 					var arr []any
 					if err := jsonstd.Unmarshal([]byte(rendered), &arr); err != nil {
-						return nil, fmt.Errorf("invalid rendered JSON for %s (expected array root): %w\nrendered: %s",
-							field.Name, err, rendered)
+						return nil, nil, fmt.Errorf(
+							"invalid rendered JSON for %s (expected array root): %w\nrendered: %s",
+							field.Name, err, rendered,
+						)
 					}
 
 					if len(arr) > 0 {
@@ -450,7 +481,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 
 				out, err := jsonstd.Marshal(items)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				value = string(out)
@@ -458,16 +489,16 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)
 				if !found {
-					return nil, fmt.Errorf("faker not found for type: %s", field.Type)
+					return nil, nil, fmt.Errorf("faker not found for type: %s", field.Type)
 				}
 				faker, err := factory(field, rng)
 				if err != nil {
 					log.Error("Error creating faker", "field_name", field.Name, "type", field.Type)
-					return nil, fmt.Errorf("%w", err)
+					return nil, nil, fmt.Errorf("%w", err)
 				}
 				value, err = faker.Generate()
 				if err != nil {
-					return nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
+					return nil, nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
 				}
 			}
 		}
@@ -475,7 +506,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		var valueStr string
 		if value == nil {
 			valueStr = ""
-			if rowIndex == 2 { //if we cant fetch value from cache, log once and move on
+			if rowIndex == 2 {
 				log.Warn("Failed to inject value from cache", "key", key)
 			}
 		} else {
@@ -485,7 +516,8 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		generatedFields[field.Name] = valueStr
 		record = append(record, valueStr)
 	}
-	return record, nil
+
+	return record, generatedFields, nil
 }
 
 type fieldCache map[string][]map[string]any
@@ -683,5 +715,102 @@ func validateEntityConfig(file models.Entity) error {
 		return fmt.Errorf("missing config for %s: %s", file.Config.FileName, strings.Join(missing, ", "))
 	}
 
+	return nil
+}
+
+func emitOutputHooks(file models.Entity, generated map[string]string, acc *OutputAccumulator) error {
+	if acc == nil || len(file.Output) == 0 {
+		return nil
+	}
+
+	for _, mapping := range file.Output {
+		out := make(map[string]any, len(mapping))
+		for outKey, sourcePath := range mapping {
+			v, ok := resolveOutputPath(generated, sourcePath)
+			if !ok {
+				out[outKey] = nil
+				continue
+			}
+			out[outKey] = v
+		}
+		acc.Add(out)
+	}
+
+	return nil
+}
+
+func resolveOutputPath(generated map[string]string, p string) (any, bool) {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return nil, false
+	}
+
+	parts := strings.Split(p, ".")
+	root := parts[0]
+
+	rootVal, ok := generated[root]
+	if !ok {
+		return nil, false
+	}
+
+	if len(parts) == 1 {
+		return rootVal, true
+	}
+
+	var node any
+	if err := jsonstd.Unmarshal([]byte(rootVal), &node); err != nil {
+		return nil, false
+	}
+
+	cur := node
+	for _, tok := range parts[1:] {
+		tok = strings.TrimSpace(tok)
+		if tok == "" {
+			return nil, false
+		}
+
+		switch typed := cur.(type) {
+		case map[string]any:
+			nxt, exists := typed[tok]
+			if !exists {
+				return nil, false
+			}
+			cur = nxt
+
+		case []any:
+			idx, err := strconv.Atoi(tok)
+			if err != nil || idx < 0 || idx >= len(typed) {
+				return nil, false
+			}
+			cur = typed[idx]
+
+		default:
+			return nil, false
+		}
+	}
+
+	return cur, true
+}
+
+type OutputAccumulator struct {
+	items []map[string]any
+}
+
+func (a *OutputAccumulator) Add(item map[string]any) {
+	if item == nil {
+		return
+	}
+	a.items = append(a.items, item)
+}
+
+func (a *OutputAccumulator) FlushToStdout() error {
+	if len(a.items) == 0 {
+		return nil
+	}
+	b, err := jsonstd.Marshal(a.items)
+	if err != nil {
+		return fmt.Errorf("marshal output array: %w", err)
+	}
+	fmt.Fprintln(os.Stdout, "\"output\":"+string(b))
 	return nil
 }

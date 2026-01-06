@@ -28,6 +28,7 @@ var (
 	scaffoldName string
 	profile      string
 	showVersion  bool
+	dryRun       bool
 	force        bool
 	verbose      bool
 	generate     bool
@@ -74,7 +75,7 @@ var rootCmd = &cobra.Command{
 			return errors.New("no configuration loaded")
 		}
 
-		ProcessFiles(force)
+		ProcessFiles(force, dryRun)
 		return nil
 	},
 }
@@ -126,8 +127,8 @@ func runGenerate(cmd *cobra.Command) error {
 	return nil
 }
 
-func ProcessFiles(force bool) {
-	csv.ProcessFiles(*cfg, force)
+func ProcessFiles(force bool, dryRun bool) {
+	csv.ProcessFiles(*cfg, force, dryRun)
 }
 
 func runScaffold() {
@@ -296,6 +297,7 @@ func parseInjectedVars(pairs []string) map[string]string {
 
 func init() {
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "show CLI version")
+	rootCmd.Flags().BoolVarP(&dryRun, "dry run", "d", false, "disable all post processing steps")
 	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "allow destructive operation")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "show additional logs")
 	rootCmd.Flags().BoolVarP(&generate, "generate", "g", false, "generate a new config file")
