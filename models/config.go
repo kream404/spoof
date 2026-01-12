@@ -21,6 +21,7 @@ type Postprocess struct {
 	Schema    string   `json:"schema,omitempty"`
 	Table     string   `json:"table,omitempty"`
 	Key       string   `json:"key,omitempty"`
+	Alias     string   `json:"alias,omitempty"`
 	Type      string   `json:"type,omitempty"`
 	HasHeader bool     `json:"headers,omitempty"`
 	TrimSpace bool     `json:"trim,omitempty"`
@@ -77,11 +78,12 @@ type Field struct {
 }
 
 type Entity struct {
-	Config      Config       `json:"config"`
-	Postprocess Postprocess  `json:"postprocess,omitempty"`
-	CacheConfig *CacheConfig `json:"cache,omitempty"`
-	Fields      []Field      `json:"fields"`
-	Source      string       `json:"source,omitempty"`
+	Config      Config              `json:"config"`
+	Postprocess Postprocess         `json:"postprocess,omitempty"`
+	CacheConfig *CacheConfig        `json:"cache,omitempty"`
+	Fields      []Field             `json:"fields"`
+	Source      string              `json:"source,omitempty"`
+	Output      []map[string]string `json:"output,omitempty"`
 }
 
 type FileConfig struct {

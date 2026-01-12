@@ -13,12 +13,18 @@ func parseFunctionString(s string) (name string, params map[string]string) {
 	if s == "" {
 		return
 	}
+
+	s = strings.TrimSpace(s)
 	parts := strings.SplitN(s, ":", 2)
 	name = strings.ToLower(strings.TrimSpace(parts[0]))
 	if len(parts) == 1 {
 		return
 	}
-	for _, kv := range strings.Split(parts[1], ",") {
+
+	paramStr := parts[1]
+	paramStr = strings.ReplaceAll(paramStr, ";", ",")
+
+	for _, kv := range strings.Split(paramStr, ",") {
 		kv = strings.TrimSpace(kv)
 		if kv == "" {
 			continue
@@ -31,6 +37,7 @@ func parseFunctionString(s string) (name string, params map[string]string) {
 		v := strings.TrimSpace(p[1])
 		params[k] = v
 	}
+
 	return
 }
 

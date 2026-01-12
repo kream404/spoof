@@ -35,7 +35,7 @@ func Error(msg string, args ...any) {
 }
 
 func Init(level slog.Level) {
-	w := os.Stderr
+	w := os.Stdout
 
 	handler := tint.NewHandler(w, &tint.Options{
 		TimeFormat: time.TimeOnly,

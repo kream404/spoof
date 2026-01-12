@@ -95,28 +95,74 @@ func renderJSONLiteral(raw, typ string) string {
 
 func PerformTokenReplacement(raw []byte, vars map[string]string) ([]byte, error) {
 	s := string(raw)
-	pairs := make([]string, 0, len(vars)*2)
 
-	for k, v := range vars {
-		pairs = append(pairs, "{{"+k+"}}", v)
-		pairs = append(pairs, "{{ "+k+" }}", v)
-	}
-	r := strings.NewReplacer(pairs...)
-	s = r.Replace(s)
+	missing := make([]string, 0)
+	tokenRE := regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)
+	out := tokenRE.ReplaceAllStringFunc(s, func(full string) string {
+		inner := tokenRE.FindStringSubmatch(full)[1]
+		inner = strings.TrimSpace(inner)
 
-	unfilled := regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)
-	matches := unfilled.FindAllStringSubmatch(s, -1)
-	if len(matches) > 0 {
-		var missing []string
-		for _, m := range matches {
-			if len(m) > 1 {
-				missing = append(missing, strings.TrimSpace(m[1]))
-			}
+		// Split on first pipe: "KEY | default value"
+		key, def, hasDef := splitKeyDefault(inner)
+
+		if v, ok := vars[key]; ok {
+			return v
 		}
+
+		if hasDef {
+			return def
+		}
+
+		missing = append(missing, key)
+		return full // leave it unfilled for now; we'll error after.
+	})
+
+	if len(missing) > 0 {
+		missing = dedupePreserveOrder(missing)
 		return nil, fmt.Errorf("missing input for %v", missing)
 	}
 
-	return []byte(s), nil
+	if leftovers := tokenRE.FindAllStringSubmatch(out, -1); len(leftovers) > 0 {
+		var still []string
+		for _, m := range leftovers {
+			if len(m) > 1 {
+				still = append(still, strings.TrimSpace(m[1]))
+			}
+		}
+		still = dedupePreserveOrder(still)
+		return nil, fmt.Errorf("missing input for %v", still)
+	}
+
+	return []byte(out), nil
+}
+
+func splitKeyDefault(inner string) (key string, def string, hasDef bool) {
+	parts := strings.SplitN(inner, "|", 2)
+	key = strings.TrimSpace(parts[0])
+
+	if len(parts) == 2 {
+		hasDef = true
+		def = strings.TrimSpace(parts[1])
+
+		// Optional: support "default:..." sugar
+		if strings.HasPrefix(strings.ToLower(def), "default:") {
+			def = strings.TrimSpace(def[len("default:"):])
+		}
+	}
+	return
+}
+
+func dedupePreserveOrder(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, x := range in {
+		if _, ok := seen[x]; ok {
+			continue
+		}
+		seen[x] = struct{}{}
+		out = append(out, x)
+	}
+	return out
 }
 
 func MarshalTemplate(v any) ([]byte, error) {
