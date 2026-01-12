@@ -46,10 +46,9 @@ func ProcessFiles(config models.FileConfig, force bool, dryRun bool) error {
 				return err
 			}
 		}
-	}
-
-	if err := acc.FlushToStdout(); err != nil {
-		return err
+		if err := acc.FlushToStdout(file.Config.FileName); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -803,14 +802,21 @@ func (a *OutputAccumulator) Add(item map[string]any) {
 	a.items = append(a.items, item)
 }
 
-func (a *OutputAccumulator) FlushToStdout() error {
+func (a *OutputAccumulator) FlushToStdout(fileName string) error {
 	if len(a.items) == 0 {
 		return nil
 	}
-	b, err := jsonstd.Marshal(a.items)
-	if err != nil {
-		return fmt.Errorf("marshal output array: %w", err)
+
+	out := map[string]any{
+		fileName: a.items,
 	}
-	fmt.Fprintln(os.Stdout, "\"output\":"+string(b))
+
+	b, err := jsonstd.Marshal(out)
+	if err != nil {
+		return fmt.Errorf("marshal output: %w", err)
+	}
+
+	fmt.Fprintln(os.Stdout, string(b))
+	a.items = nil
 	return nil
 }

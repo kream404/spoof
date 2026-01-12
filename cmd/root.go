@@ -171,7 +171,17 @@ func loadConfig() error {
 	var loaded models.FileConfig
 
 	if isBundle {
-		// Load each referenced config
+		var err error
+		raw, err = applyVars(raw, varsMap)
+		if err != nil {
+			return fmt.Errorf("variable injection failed for bundle: %w", err)
+		}
+
+		b = models.Bundle{}
+		if err := json.Unmarshal(raw, &b); err != nil {
+			return fmt.Errorf("failed to unmarshal bundle after variable injection: %w", err)
+		}
+
 		for _, f := range b.Files {
 			src := strings.TrimSpace(f.Source)
 			if src == "" {
@@ -198,19 +208,12 @@ func loadConfig() error {
 			loaded.Files = append(loaded.Files, child.Files...)
 		}
 
-		// Fallback: treat the top-level config as a normal config
 		if len(loaded.Files) == 0 {
-			var err error
-			raw, err = applyVars(raw, varsMap)
-			if err != nil {
-				return fmt.Errorf("variable injection failed for root bundle: %w", err)
-			}
 			if err := json.Unmarshal(raw, &loaded); err != nil {
 				return fmt.Errorf("no files found from bundle sources and generic load failed: %w", err)
 			}
 		}
 	} else {
-		// Simple non-bundle config
 		var err error
 		raw, err = applyVars(raw, varsMap)
 		if err != nil {
