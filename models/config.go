@@ -63,6 +63,7 @@ type Field struct {
 	Length     int      `json:"length,omitempty"`
 	Min        float64  `json:"min,omitempty"`
 	Max        float64  `json:"max,omitempty"`
+	Start 	   *int   	`json:"start,omitempty"`
 	Value      string   `json:"value,omitempty"`
 	Values     string   `json:"values,omitempty"`
 	Interval   int64    `json:"interval,omitempty"`

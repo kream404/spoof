@@ -387,7 +387,11 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				}
 
 			case field.Type == "iterator":
-				value = rowIndex
+				start := 1
+				if field.Start != nil {
+					start = *field.Start
+				}
+				value = start + rowIndex			
 
 			case field.Type == "":
 				value = field.Value

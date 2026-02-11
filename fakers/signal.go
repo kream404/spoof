@@ -7,38 +7,44 @@ import (
 	"time"
 )
 
-func parseFunctionString(s string) (name string, params map[string]string) {
-	name = "constant"
-	params = map[string]string{}
-	if s == "" {
-		return
-	}
-
+func parseFunctionString(s string) (string, map[string]string) {
 	s = strings.TrimSpace(s)
-	parts := strings.SplitN(s, ":", 2)
-	name = strings.ToLower(strings.TrimSpace(parts[0]))
-	if len(parts) == 1 {
-		return
+	params := make(map[string]string)
+
+	if s == "" {
+		return "", params
 	}
 
-	paramStr := parts[1]
-	paramStr = strings.ReplaceAll(paramStr, ";", ",")
-
-	for _, kv := range strings.Split(paramStr, ",") {
-		kv = strings.TrimSpace(kv)
-		if kv == "" {
-			continue
-		}
-		p := strings.SplitN(kv, "=", 2)
-		if len(p) != 2 {
-			continue
-		}
-		k := strings.ToLower(strings.TrimSpace(p[0]))
-		v := strings.TrimSpace(p[1])
-		params[k] = v
+	name := s
+	rest := ""
+	if i := strings.Index(s, ":"); i >= 0 {
+		name = strings.TrimSpace(s[:i])
+		rest = strings.TrimSpace(s[i+1:])
+	} else {
+		name = strings.TrimSpace(s)
 	}
 
-	return
+	if rest != "" {
+		rest = strings.ReplaceAll(rest, ";", ",")
+
+		for _, part := range strings.Split(rest, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			kv := strings.SplitN(part, "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+			k := strings.ToLower(strings.TrimSpace(kv[0]))
+			v := strings.TrimSpace(kv[1])
+			if k != "" {
+				params[k] = v
+			}
+		}
+	}
+
+	return strings.ToLower(name), params
 }
 
 // sampleNormalized returns a value in [0,1] for the provided function name and params.
@@ -111,9 +117,18 @@ func sampleNormalized(fn string, params map[string]string, rng *rand.Rand) float
 			}
 			base = n
 		} else {
-			// constant returns normalized 0 by default (caller maps it)
-			base = 0.0
+			switch strings.ToLower(strings.TrimSpace(params["dir"])) {
+			case "future":
+				base = 1.0
+			case "past":
+				base = 0.0
+			case "both":
+				base = 0.5
+			default:
+				base = 0.5
+			}
 		}
+	
 
 	case "exponential":
 		// overall exponential / heavy-tailed function (not just jitter)

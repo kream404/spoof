@@ -19,7 +19,7 @@ type TimestampFaker struct {
 }
 
 func (f *TimestampFaker) Generate() (any, error) {
-	now := time.Now()
+	now := time.Now().UTC().Truncate(time.Second)
 
 	// parse function string
 	name, params := parseFunctionString(strings.TrimSpace(f.function))
