@@ -66,33 +66,46 @@ func MapNormalizedToFloat(norm float64, params map[string]string, min, max float
 //   - params["center"] (duration string, e.g. "1d" or "-2h", optional)
 //   - dir: "past" | "future" | "both" (affects sign mapping)
 func MapNormalizedToDuration(norm float64, params map[string]string, base time.Duration, dir string) time.Duration {
-	baseMag := time.Duration(math.Abs(float64(base)))
+
 	amp := parseAmplitude(params)
-	effective := time.Duration(float64(baseMag) * amp)
 
+	// infer direction if not provided
+	d := strings.ToLower(strings.TrimSpace(dir))
+	if d == "" {
+		if base < 0 {
+			d = "past"
+		} else {
+			d = "future"
+		}
+	}
+
+	// magnitude controls range size
+	mag := time.Duration(math.Abs(float64(base)))
+	effective := time.Duration(float64(mag) * amp)
+
+	// parse center
 	center := time.Duration(0)
-	if cs, ok := params["center"]; ok && strings.TrimSpace(cs) != "" {
-		clean := strings.TrimSpace(cs)
-		sign := 1.0
-		if strings.HasPrefix(clean, "-") {
-			sign = -1.0
-			clean = strings.TrimPrefix(clean, "-")
-		}
-		if d := ParseDurationExt(clean, 0); d != 0 {
-			center = time.Duration(sign * float64(d))
+	if cs := strings.TrimSpace(params["center"]); cs != "" {
+		if cd := ParseDurationExt(cs, 0); cd != 0 {
+			center = cd
 		}
 	}
 
-	// map based on dir
-	switch strings.ToLower(strings.TrimSpace(dir)) {
+	var result time.Duration
+
+	switch d {
 	case "past":
-		// offset = -effective + norm*effective = (norm-1)*effective
-		return time.Duration((norm-1.0)*float64(effective)) + center
+		// [-effective, 0]
+		result = time.Duration((norm-1.0)*float64(effective)) + center
+
 	case "both":
-		// [0,1] -> [-effective, +effective]
-		return time.Duration((2*norm-1)*float64(effective)) + center
-	default:
-		// norm=0 -> 0, norm=1 -> +effective
-		return time.Duration(norm*float64(effective)) + center
+		// [-effective, +effective]
+		result = time.Duration((2*norm-1.0)*float64(effective)) + center
+
+	default: // "future"
+		// [0, +effective]
+		result = time.Duration(norm*float64(effective)) + center
 	}
+
+	return result
 }
