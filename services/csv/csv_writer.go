@@ -153,6 +153,9 @@ func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (str
 	if file.Config.IncludeHeaders {
 		var headers []string
 		for _, field := range file.Fields {
+			if field.Skip {
+				continue
+			}
 			headers = append(headers, field.Name)
 		}
 		if err := writer.Write(headers); err != nil {
@@ -365,7 +368,64 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 		if !injected {
 			switch {
 			case field.Seed:
-				value = cache[seedIndex][key]
+				// default behaviour: align by seedIndex
+				if field.SeedSelector == nil {
+					value = cache[seedIndex][key]
+					break
+				}
+
+				sel := field.SeedSelector
+				if sel.Column == "" {
+					return nil, nil, fmt.Errorf("seedSelector.column is required for field %s", field.Name)
+				}
+				if sel.Key == "" {
+					return nil, nil, fmt.Errorf("seedSelector.key is required for field %s", field.Name)
+				}
+
+				// If sel.Key matches a generated field name (e.g. "offername"),
+				// use the generated value for this row; otherwise treat sel.Key as literal.
+				lookupKey := sel.Key
+				if gv, ok := generatedFields[sel.Key]; ok {
+					lookupKey = gv
+				}
+
+				matches := 0
+				var picked any
+
+				for _, row := range cache {
+					v := row[sel.Column]
+					if v == nil {
+						continue
+					}
+					if fmt.Sprint(v) == lookupKey {
+						// ensure the value column exists
+						out, ok := row[key]
+						if !ok || out == nil || fmt.Sprint(out) == "" {
+							return nil, nil, fmt.Errorf(
+								"seedSelector matched row where %s=%q but output column %q was missing/empty",
+								sel.Column, lookupKey, key,
+							)
+						}
+						picked = out
+						matches++
+					}
+				}
+
+				if matches == 0 {
+					return nil, nil, fmt.Errorf(
+						"seedSelector lookup failed for field=%s: no cache row where %s == %q",
+						field.Name, sel.Column, lookupKey,
+					)
+				}
+
+				if matches > 1 {
+					return nil, nil, fmt.Errorf(
+						"seedSelector lookup ambiguous for field=%s: %d cache rows where %s == %q",
+						field.Name, matches, sel.Column, lookupKey,
+					)
+				}
+
+				value = picked
 
 			case field.Type == "reflection":
 				targetValue, ok := generatedFields[field.Target]
@@ -377,8 +437,8 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					return nil, nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 				}
 				value = targetValue
-				if field.Modifier != nil {
-					modifiedValue, err := modifier(targetValue, *field.Modifier)
+				if field.Modifier != "" {
+					modifiedValue, err := modifier(targetValue, field.Modifier)
 					if err != nil {
 						log.Error("modifier ignored: not a valid number", "target", targetValue)
 						return nil, nil, err
@@ -391,7 +451,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 				if field.Start != nil {
 					start = *field.Start
 				}
-				value = start + rowIndex			
+				value = start + rowIndex
 
 			case field.Type == "":
 				value = field.Value
@@ -414,7 +474,7 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 					break
 				}
 
-				idx := rowIndex % len(cleaned)
+				idx := (rowIndex - 1) % len(cleaned)
 				value = cleaned[idx]
 
 			case field.Type == "json":
@@ -516,8 +576,15 @@ func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fie
 			valueStr = fmt.Sprint(value)
 		}
 
+		valueStr, err := applyModifier(valueStr, field)
+		if err != nil {
+			return nil, nil, fmt.Errorf("modifier failed for field %s: %w", field.Name, err)
+		}
+
 		generatedFields[field.Name] = valueStr
-		record = append(record, valueStr)
+		if !field.Skip {
+			record = append(record, valueStr)
+		}
 	}
 
 	return record, generatedFields, nil
@@ -591,12 +658,17 @@ func CreateRNGSeed(seed_in string) (*rand.Rand, string) {
 	return rand.New(rand.NewSource(seed)), s
 }
 
-func modifier(raw string, modifier float64) (string, error) {
+func modifier(raw string, modifier string) (string, error) {
 	decimalValue, err := decimal.NewFromString(raw)
 	if err != nil {
 		return "", fmt.Errorf("invalid number: %v", err)
 	}
-	modifiedValue := decimalValue.Mul(decimal.NewFromFloat(modifier))
+	modifierValue, err := decimal.NewFromString(modifier)
+	if err != nil {
+		return "", fmt.Errorf("invalid number: %v", err)
+	}
+
+	modifiedValue := decimalValue.Mul(modifierValue)
 
 	decimals := 0
 	if dot := strings.Index(raw, "."); dot != -1 {
@@ -793,6 +865,13 @@ func resolveOutputPath(generated map[string]string, p string) (any, bool) {
 	}
 
 	return cur, true
+}
+
+func applyModifier(val string, field models.Field) (string, error) {
+	if field.Modifier == "" {
+		return val, nil
+	}
+	return modifier(val, field.Modifier)
 }
 
 type OutputAccumulator struct {

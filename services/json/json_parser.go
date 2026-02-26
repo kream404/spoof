@@ -168,12 +168,71 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 		}
 
 		if !injected && field.Seed && len(cache) > 0 {
-			idx := seedIndex % len(cache)
-			if row := cache[idx]; row != nil {
-				if val, ok := row[key]; ok && val != nil {
-					value = val
-					injected = true
+			// default behaviour: align by seedIndex
+			if field.SeedSelector == nil {
+				idx := seedIndex % len(cache)
+				if row := cache[idx]; row != nil {
+					if val, ok := row[key]; ok && val != nil {
+						value = val
+						injected = true
+					}
 				}
+			} else {
+				sel := field.SeedSelector
+				if sel.Column == "" {
+					return nil, fmt.Errorf("seedSelector.column is required for nested field %s", field.Name)
+				}
+				if sel.Key == "" {
+					return nil, fmt.Errorf("seedSelector.key is required for nested field %s", field.Name)
+				}
+
+				// if sel.Key refers to a generated field name (e.g. "lookupkeys"),
+				// use the generated value; else treat it as literal
+				lookupKey := sel.Key
+				if gv, ok := generated[sel.Key]; ok {
+					lookupKey = gv
+				} else if parentGenerated != nil {
+					if gv, ok := parentGenerated[sel.Key]; ok {
+						lookupKey = gv
+					}
+				}
+
+				matches := 0
+				var picked any
+
+				for _, row := range cache {
+					v := row[sel.Column]
+					if v == nil {
+						continue
+					}
+					if fmt.Sprint(v) == lookupKey {
+						out, ok := row[key]
+						if !ok || out == nil || fmt.Sprint(out) == "" {
+							return nil, fmt.Errorf(
+								"seedSelector matched row where %s=%q but output column %q was missing/empty",
+								sel.Column, lookupKey, key,
+							)
+						}
+						picked = out
+						matches++
+					}
+				}
+
+				if matches == 0 {
+					return nil, fmt.Errorf(
+						"seedSelector lookup failed for nested field=%s: no cache row where %s == %q",
+						field.Name, sel.Column, lookupKey,
+					)
+				}
+				if matches > 1 {
+					return nil, fmt.Errorf(
+						"seedSelector lookup ambiguous for nested field=%s: %d cache rows where %s == %q",
+						field.Name, matches, sel.Column, lookupKey,
+					)
+				}
+
+				value = picked
+				injected = true
 			}
 		}
 
@@ -194,8 +253,8 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 				}
 
 				out := targetValue
-				if field.Modifier != nil {
-					modified, err := modifier(targetValue, *field.Modifier)
+				if field.Modifier != "" {
+					modified, err := modifier(targetValue, field.Modifier)
 					if err != nil {
 						return nil, err
 					}
@@ -227,7 +286,7 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 					break
 				}
 
-				idx := rowIndex % len(cleaned)
+				idx := (rowIndex - 1) % len(cleaned)
 				value = cleaned[idx]
 			default:
 				factory, found := fakers.GetFakerByName(field.Type)
@@ -260,12 +319,17 @@ func GenerateNestedValues(rowIndex, seedIndex int, rng *rand.Rand, fields []mode
 	return values, nil
 }
 
-func modifier(raw string, modifier float64) (string, error) {
+func modifier(raw string, modifier string) (string, error) {
 	decimalValue, err := decimal.NewFromString(raw)
 	if err != nil {
 		return "", fmt.Errorf("invalid number: %v", err)
 	}
-	modifiedValue := decimalValue.Mul(decimal.NewFromFloat(modifier))
+	modifierValue, err := decimal.NewFromString(modifier)
+	if err != nil {
+		return "", fmt.Errorf("invalid number: %v", err)
+	}
+
+	modifiedValue := decimalValue.Mul(modifierValue)
 
 	decimals := 0
 	if dot := strings.Index(raw, "."); dot != -1 {
