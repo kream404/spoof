@@ -17,15 +17,13 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-
 	"github.com/google/uuid"
-	"github.com/kream404/spoof/fakers"
+
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
-	"github.com/kream404/spoof/services/json"
+	"github.com/kream404/spoof/services/evaluator" // ✅ new
 	log "github.com/kream404/spoof/services/logger"
 	s3c "github.com/kream404/spoof/services/s3"
-	"github.com/shopspring/decimal"
 )
 
 func ProcessFiles(config models.FileConfig, force bool, dryRun bool) error {
@@ -46,6 +44,7 @@ func ProcessFiles(config models.FileConfig, force bool, dryRun bool) error {
 				return err
 			}
 		}
+
 		if err := acc.FlushToStdout(file.Config.FileName); err != nil {
 			return err
 		}
@@ -55,12 +54,13 @@ func ProcessFiles(config models.FileConfig, force bool, dryRun bool) error {
 }
 
 func processOneFile(ctx context.Context, file models.Entity, outDir string, force bool, dryRun bool, acc *OutputAccumulator) error {
-
 	if err := validateEntityConfig(file); err != nil {
 		return fmt.Errorf("%w", err)
 	}
 
-	if (strings.EqualFold(file.Postprocess.Operation, "delete") || strings.EqualFold(file.Postprocess.Operation, "insert")) && strings.EqualFold(file.Postprocess.Location, "database") && file.Postprocess.Enabled {
+	if (strings.EqualFold(file.Postprocess.Operation, "delete") || strings.EqualFold(file.Postprocess.Operation, "insert")) &&
+		strings.EqualFold(file.Postprocess.Location, "database") &&
+		file.Postprocess.Enabled {
 
 		if !force {
 			log.Warn("You are attempting to perform a destructive database operation",
@@ -75,12 +75,13 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 		}
 	}
 
-	var err error
-	var localPath string
+	var (
+		err       error
+		localPath string
+	)
 
 	if file.Fields != nil {
 		localPath, err = generateCSV(file, outDir, acc)
-
 	}
 
 	if err != nil {
@@ -114,7 +115,6 @@ func Delete(ctx context.Context, file models.Entity) error {
 	}
 
 	csvPath := file.Config.FileName
-
 	log.Debug("delete from", "schema", pp.Schema, "table", pp.Table, "csv", csvPath)
 
 	db, err := database.NewDBConnector().OpenConnection(*file.CacheConfig)
@@ -126,17 +126,21 @@ func Delete(ctx context.Context, file models.Entity) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete rows: %w", err)
 	}
+
 	log.Info("Delete completed", "table", pp.Table, "rows", rows)
 	return nil
 }
 
 func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (string, error) {
 	var cacheIndex, rowIndex = 0, 1
+
 	log.Info("Generating file", "file", file.Config.FileName)
+
 	cache, err := LoadCache(file.CacheConfig)
 	if err != nil {
 		return "", fmt.Errorf("could not load cache: %w", err)
 	}
+
 	outFile, localPath, err := makeOutputFile(outDir, file.Config.FileName)
 	if err != nil {
 		return "", fmt.Errorf("create output file: %w", err)
@@ -149,9 +153,8 @@ func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (str
 		writer.Comma = rune(d[0])
 	}
 
-	// headers
 	if file.Config.IncludeHeaders {
-		var headers []string
+		headers := make([]string, 0, len(file.Fields))
 		for _, field := range file.Fields {
 			if field.Skip {
 				continue
@@ -164,6 +167,7 @@ func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (str
 	}
 
 	fieldCaches := preloadFieldSources(file.Fields)
+
 	rng, seed := CreateRNGSeed(file.Config.Seed)
 
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
@@ -171,7 +175,14 @@ func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (str
 	s.Start()
 
 	for i := 0; i < file.Config.RowCount; i++ {
-		row, generated, err := GenerateValues(file, cache, fieldCaches, rowIndex, cacheIndex, rng)
+		row, generated, err := evaluator.GenerateValues(
+			file,
+			cache,
+			map[string][]map[string]any(fieldCaches),
+			rowIndex,
+			cacheIndex,
+			rng,
+		)
 		if err != nil {
 			s.Stop()
 			return "", fmt.Errorf("generate row: %w", err)
@@ -189,6 +200,7 @@ func generateCSV(file models.Entity, outDir string, acc *OutputAccumulator) (str
 
 		cacheIndex++
 		rowIndex++
+
 		if len(cache) > 0 && cacheIndex >= len(cache) {
 			cacheIndex = 0
 		}
@@ -249,15 +261,15 @@ func Insert(ctx context.Context, file models.Entity, localPath string) error {
 }
 
 func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
-	var cache []map[string]any
-	var err error
+	var (
+		cache []map[string]any
+		err   error
+	)
 
 	if config != nil && (config.Source != "" || config.Statement != "") {
 		log.Debug("Loading CSV cache", "source", config.Source)
 
-		//TODO: refactor to cache service ?
 		switch {
-		//load from s3
 		case strings.HasPrefix(config.Source, "s3://"):
 			s3, errConn := s3c.NewS3Connector().OpenConnection(models.CacheConfig{}, config.Region)
 			if errConn != nil {
@@ -267,14 +279,13 @@ func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
 			if err != nil {
 				return nil, fmt.Errorf("load cache from s3: %w", err)
 			}
-		// load from csv
+
 		case strings.Contains(config.Source, ".csv") && !strings.HasPrefix(config.Source, "s3://"):
 			cache, _, _, err = ReadCSVAsMap(config.Source)
 			if err != nil {
 				return nil, fmt.Errorf("read local csv cache: %w", err)
 			}
 
-		//load from db
 		default:
 			cache, err = database.NewDBConnector().LoadCache(*config)
 			if err != nil {
@@ -282,6 +293,7 @@ func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
 			}
 		}
 	}
+
 	return cache, nil
 }
 
@@ -331,263 +343,13 @@ func makeOutputFile(baseDir, fileName string) (*os.File, string, error) {
 	if err := os.MkdirAll(filepath.Dir(outputFile), os.ModePerm); err != nil {
 		return nil, "", err
 	}
-	file, err := os.Create(outputFile)
+
+	f, err := os.Create(outputFile)
 	if err != nil {
 		return nil, "", err
 	}
-	return file, outputFile, nil
-}
 
-func GenerateValues(file models.Entity, cache []map[string]any, fieldSources fieldCache, rowIndex int, seedIndex int, rng *rand.Rand) ([]string, map[string]string, error) {
-	var record []string
-	generatedFields := make(map[string]string)
-
-	for _, field := range file.Fields {
-		var value any
-		var key string
-		if field.Alias != "" {
-			key = field.Alias
-		} else {
-			key = field.Name
-		}
-
-		injected := false
-		if shouldInjectFromSource(field, rng) && field.Source != "" && strings.Contains(field.Source, ".csv") {
-			if rows, ok := fieldSources[field.Source]; ok && len(rows) > 0 {
-				idx := seedIndex % len(rows)
-				if val := rows[idx][key]; val != nil {
-					value = val
-					injected = true
-				} else {
-					log.Warn("Key not found in preloaded source row; falling back",
-						"key", key, "field", field.Name, "source", field.Source)
-				}
-			}
-		}
-
-		if !injected {
-			switch {
-			case field.Seed:
-				// default behaviour: align by seedIndex
-				if field.SeedSelector == nil {
-					value = cache[seedIndex][key]
-					break
-				}
-
-				sel := field.SeedSelector
-				if sel.Column == "" {
-					return nil, nil, fmt.Errorf("seedSelector.column is required for field %s", field.Name)
-				}
-				if sel.Key == "" {
-					return nil, nil, fmt.Errorf("seedSelector.key is required for field %s", field.Name)
-				}
-
-				// If sel.Key matches a generated field name (e.g. "offername"),
-				// use the generated value for this row; otherwise treat sel.Key as literal.
-				lookupKey := sel.Key
-				if gv, ok := generatedFields[sel.Key]; ok {
-					lookupKey = gv
-				}
-
-				matches := 0
-				var picked any
-
-				for _, row := range cache {
-					v := row[sel.Column]
-					if v == nil {
-						continue
-					}
-					if fmt.Sprint(v) == lookupKey {
-						// ensure the value column exists
-						out, ok := row[key]
-						if !ok || out == nil || fmt.Sprint(out) == "" {
-							return nil, nil, fmt.Errorf(
-								"seedSelector matched row where %s=%q but output column %q was missing/empty",
-								sel.Column, lookupKey, key,
-							)
-						}
-						picked = out
-						matches++
-					}
-				}
-
-				if matches == 0 {
-					return nil, nil, fmt.Errorf(
-						"seedSelector lookup failed for field=%s: no cache row where %s == %q",
-						field.Name, sel.Column, lookupKey,
-					)
-				}
-
-				if matches > 1 {
-					return nil, nil, fmt.Errorf(
-						"seedSelector lookup ambiguous for field=%s: %d cache rows where %s == %q",
-						field.Name, matches, sel.Column, lookupKey,
-					)
-				}
-
-				value = picked
-
-			case field.Type == "reflection":
-				targetValue, ok := generatedFields[field.Target]
-				if !ok {
-					log.Error("Reflection error", "field_name", field.Name)
-					if field.Target == "" {
-						return nil, nil, fmt.Errorf("You must provide a 'target' to use reflection")
-					}
-					return nil, nil, fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
-				}
-				value = targetValue
-				if field.Modifier != "" {
-					modifiedValue, err := modifier(targetValue, field.Modifier)
-					if err != nil {
-						log.Error("modifier ignored: not a valid number", "target", targetValue)
-						return nil, nil, err
-					}
-					value = modifiedValue
-				}
-
-			case field.Type == "iterator":
-				start := 1
-				if field.Start != nil {
-					start = *field.Start
-				}
-				value = start + rowIndex
-
-			case field.Type == "":
-				value = field.Value
-
-			case field.Type == "foreach":
-				vals := field.Values
-				raw := strings.TrimSpace(vals)
-				parts := strings.Split(raw, ",")
-				cleaned := make([]string, 0, len(parts))
-				for _, p := range parts {
-					s := strings.TrimSpace(p)
-					if s != "" {
-						cleaned = append(cleaned, s)
-					}
-				}
-
-				if len(cleaned) == 0 {
-					log.Warn("foreach field has only empty/whitespace values; emitting empty string", "field", field.Name)
-					value = ""
-					break
-				}
-
-				idx := (rowIndex - 1) % len(cleaned)
-				value = cleaned[idx]
-
-			case field.Type == "json":
-				cj, err := json.CompileJSONField(field, field.Template)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				raw := strings.TrimSpace(cj.Raw)
-				rootIsArray := strings.HasPrefix(raw, "[")
-
-				if !rootIsArray {
-					kv, err := json.GenerateNestedValues(rowIndex, seedIndex, rng, cj.Fields, cache, fieldSources, generatedFields)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					s, err := json.RenderJSONCell(cj.Raw, kv)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					value = s
-					break
-				}
-
-				repeat := field.Repeat
-				if repeat <= 0 {
-					repeat = 1
-				}
-
-				items := make([]any, 0, repeat)
-
-				for j := 0; j < repeat; j++ {
-					iterSeed := seedIndex + j
-
-					kv, err := json.GenerateNestedValues(
-						rowIndex,
-						iterSeed,
-						rng,
-						cj.Fields,
-						cache,
-						fieldSources,
-						generatedFields,
-					)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					rendered, err := json.RenderJSONCell(cj.Raw, kv)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					var arr []any
-					if err := jsonstd.Unmarshal([]byte(rendered), &arr); err != nil {
-						return nil, nil, fmt.Errorf(
-							"invalid rendered JSON for %s (expected array root): %w\nrendered: %s",
-							field.Name, err, rendered,
-						)
-					}
-
-					if len(arr) > 0 {
-						items = append(items, arr[0])
-					}
-				}
-
-				out, err := jsonstd.Marshal(items)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				value = string(out)
-
-			default:
-				factory, found := fakers.GetFakerByName(field.Type)
-				if !found {
-					return nil, nil, fmt.Errorf("faker not found for type: %s", field.Type)
-				}
-				faker, err := factory(field, rng)
-				if err != nil {
-					log.Error("Error creating faker", "field_name", field.Name, "type", field.Type)
-					return nil, nil, fmt.Errorf("%w", err)
-				}
-				value, err = faker.Generate()
-				if err != nil {
-					return nil, nil, fmt.Errorf("error generating value for field %s: %w", field.Name, err)
-				}
-			}
-		}
-
-		var valueStr string
-		if value == nil {
-			valueStr = ""
-			if rowIndex == 2 {
-				log.Warn("Failed to inject value from cache", "key", key)
-			}
-		} else {
-			valueStr = fmt.Sprint(value)
-		}
-
-		valueStr, err := applyModifier(valueStr, field)
-		if err != nil {
-			return nil, nil, fmt.Errorf("modifier failed for field %s: %w", field.Name, err)
-		}
-
-		generatedFields[field.Name] = valueStr
-		if !field.Skip {
-			record = append(record, valueStr)
-		}
-	}
-
-	return record, generatedFields, nil
+	return f, outputFile, nil
 }
 
 type fieldCache map[string][]map[string]any
@@ -621,86 +383,22 @@ func preloadFieldSourcesRecursive(fields []models.Field, fc fieldCache, seen map
 	}
 }
 
-func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
-	if field.Source == "" {
-		return false
-	}
-	// default to 100% if rate is omitted
-	if field.Rate == nil {
-		return true
-	}
-	r := *field.Rate
-	if r <= 0 {
-		return false
-	}
-	if r >= 100 {
-		return true
-	}
-	return rng.Intn(100) < r // 0..99 < r
-}
-
 func stringToSeed(s string) int64 {
 	h := fnv.New64a()
-	h.Write([]byte(s))
+	_, _ = h.Write([]byte(s))
 	return int64(h.Sum64())
 }
 
-func CreateRNGSeed(seed_in string) (*rand.Rand, string) {
+func CreateRNGSeed(seedIn string) (*rand.Rand, string) {
 	var s string
-	var seed int64
-	if seed_in != "" {
-		s = seed_in
+	if seedIn != "" {
+		s = seedIn
 	} else {
 		s = uuid.NewString()
 	}
 
-	seed = stringToSeed(s)
+	seed := stringToSeed(s)
 	return rand.New(rand.NewSource(seed)), s
-}
-
-func modifier(raw string, modifier string) (string, error) {
-	decimalValue, err := decimal.NewFromString(raw)
-	if err != nil {
-		return "", fmt.Errorf("invalid number: %v", err)
-	}
-	modifierValue, err := decimal.NewFromString(modifier)
-	if err != nil {
-		return "", fmt.Errorf("invalid number: %v", err)
-	}
-
-	modifiedValue := decimalValue.Mul(modifierValue)
-
-	decimals := 0
-	if dot := strings.Index(raw, "."); dot != -1 {
-		decimals = len(raw) - dot - 1
-	}
-
-	return modifiedValue.StringFixed(int32(decimals)), nil
-}
-
-func MakeOutputDir(config models.Config) (*os.File, string, error) {
-	outputDir := "output"
-	var outputFile string
-
-	if strings.HasPrefix(config.FileName, "s3://") {
-		base := filepath.Base(strings.TrimRight(config.FileName, "/"))
-		if base == "" || base == "." || base == "/" {
-			base = "output.csv"
-		}
-		outputFile = filepath.Join(outputDir, base)
-	} else {
-		outputFile = filepath.Join(outputDir, config.FileName)
-	}
-
-	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-		return nil, "", err
-	}
-
-	file, err := os.Create(outputFile)
-	if err != nil {
-		return nil, "", err
-	}
-	return file, outputFile, nil
 }
 
 func joinS3URI(base, key string) (string, error) {
@@ -718,7 +416,7 @@ func withIndexSuffix(name string, i, count int) string {
 		return name
 	}
 
-	ext := filepath.Ext(name) // ".csv"
+	ext := filepath.Ext(name)
 	base := strings.TrimSuffix(name, ext)
 
 	if ext == "" {
@@ -726,7 +424,6 @@ func withIndexSuffix(name string, i, count int) string {
 	}
 
 	return fmt.Sprintf("%s_%d%s", base, i+1, ext)
-
 }
 
 func validateEntityConfig(file models.Entity) error {
@@ -867,13 +564,6 @@ func resolveOutputPath(generated map[string]string, p string) (any, bool) {
 	return cur, true
 }
 
-func applyModifier(val string, field models.Field) (string, error) {
-	if field.Modifier == "" {
-		return val, nil
-	}
-	return modifier(val, field.Modifier)
-}
-
 type OutputAccumulator struct {
 	items []map[string]any
 }
@@ -902,4 +592,29 @@ func (a *OutputAccumulator) FlushToStdout(fileName string) error {
 	fmt.Fprintln(os.Stdout, string(b))
 	a.items = nil
 	return nil
+}
+
+func MakeOutputDir(config models.Config) (*os.File, string, error) {
+	outputDir := "output"
+	var outputFile string
+
+	if strings.HasPrefix(config.FileName, "s3://") {
+		base := filepath.Base(strings.TrimRight(config.FileName, "/"))
+		if base == "" || base == "." || base == "/" {
+			base = "output.csv"
+		}
+		outputFile = filepath.Join(outputDir, base)
+	} else {
+		outputFile = filepath.Join(outputDir, config.FileName)
+	}
+
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		return nil, "", err
+	}
+
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return nil, "", err
+	}
+	return file, outputFile, nil
 }
