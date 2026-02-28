@@ -41,48 +41,49 @@ type Profile struct {
 }
 
 type CacheConfig struct {
-	Hostname  string   `json:"hostname"`
-	Port      string   `json:"port"`
-	Username  string   `json:"username"`
-	Password  string   `json:"password"`
-	Name      string   `json:"name"`
-	Statement string   `json:"statement"`
-	Source    string   `json:"source"`
-	Region    string   `json:"region,omitempty"`
-	Columns   []string `json:"columns"`
+	Hostname     string        `json:"hostname"`
+	Port         string        `json:"port"`
+	Username     string        `json:"username"`
+	Password     string        `json:"password"`
+	Name         string        `json:"name"`
+	Statement    string        `json:"statement"`
+	Source       string        `json:"source"`
+	SeedSelector *SeedSelector `json:"selector,omitempty"`
+	Region       string        `json:"region,omitempty"`
+	Columns      []string      `json:"columns"`
 }
 
 type SeedSelector struct {
-	Column string `json:"column"`
-	Key    string `json:"key"`
+	Column string   `json:"column"`
+	Keys   []string `json:"keys"`
 }
 
 type Field struct {
-	Name         string        `json:"name"`
-	Alias        string        `json:"alias,omitempty"`
-	Type         string        `json:"type,omitempty"`
-	Modifier     string        `json:"modifier,omitempty"`
-	AutoInc      bool          `json:"auto_increment,omitempty"`
-	ForeignKey   string        `json:"foreign_key,omitempty"`
-	Format       string        `json:"format,omitempty"`
-	Length       int           `json:"length,omitempty"`
-	Min          float64       `json:"min,omitempty"`
-	Max          float64       `json:"max,omitempty"`
-	Start        *int          `json:"start,omitempty"`
-	Value        string        `json:"value,omitempty"`
-	Values       string        `json:"values,omitempty"`
-	Interval     int64         `json:"interval,omitempty"`
-	Target       string        `json:"target,omitempty"`
-	Seed         bool          `json:"seed,omitempty"`
-	SeedSelector *SeedSelector `json:"seedSelector,omitempty"`
-	Function     string        `json:"function,omitempty"`
-	Source       string        `json:"source,omitempty"`
-	Template     string        `json:"template,omitempty"`
-	Rate         *int          `json:"rate,omitempty,string"`
-	Regex        string        `json:"regex,omitempty"`
-	Fields       []Field       `json:"fields,omitempty"`
-	Repeat       int           `json:"repeat,omitempty"`
-	Skip         bool          `json:"skip,omitempty"`
+	Name       string  `json:"name"`
+	Alias      string  `json:"alias,omitempty"`
+	Type       string  `json:"type,omitempty"`
+	Modifier   string  `json:"modifier,omitempty"`
+	AutoInc    bool    `json:"auto_increment,omitempty"`
+	ForeignKey string  `json:"foreign_key,omitempty"`
+	Format     string  `json:"format,omitempty"`
+	Length     int     `json:"length,omitempty"`
+	Min        float64 `json:"min,omitempty"`
+	Max        float64 `json:"max,omitempty"`
+	Start      *int    `json:"start,omitempty"`
+	Value      string  `json:"value,omitempty"`
+	Values     string  `json:"values,omitempty"`
+	Interval   int64   `json:"interval,omitempty"`
+	Target     string  `json:"target,omitempty"`
+	Seed       bool    `json:"seed,omitempty"`
+	Selector   bool    `json:"selector,omitempty"`
+	Function   string  `json:"function,omitempty"`
+	Source     string  `json:"source,omitempty"`
+	Template   string  `json:"template,omitempty"`
+	Rate       *int    `json:"rate,omitempty,string"`
+	Regex      string  `json:"regex,omitempty"`
+	Fields     []Field `json:"fields,omitempty"`
+	Repeat     int     `json:"repeat,omitempty"`
+	Skip       bool    `json:"skip,omitempty"`
 }
 
 type Entity struct {
@@ -120,6 +121,7 @@ type BundleFile struct {
 	Source string `json:"source"`
 }
 
+// TODO: get rid of this shit
 func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	merged := profile
 	merged.Statement = c.Statement
@@ -140,6 +142,9 @@ func (c CacheConfig) MergeConfig(profile CacheConfig) CacheConfig {
 	}
 	if merged.Name == "" {
 		merged.Name = c.Name
+	}
+	if c.SeedSelector != nil {
+		merged.SeedSelector = c.SeedSelector
 	}
 
 	return merged
