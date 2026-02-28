@@ -1,5 +1,3 @@
-// evaluator.go (or at bottom of the same file)
-
 package evaluator
 
 import (
@@ -121,7 +119,6 @@ func (c *evalCtx) trySeed(field models.Field, key string) (any, bool, error) {
 			return nil, false, fmt.Errorf("seedSelector.keys is required for field %s", field.Name)
 		}
 
-		// use 1-based rowIndex convention (consistent with foreach)
 		ki := (c.rowIndex - 1) % len(sel.Keys)
 		if ki < 0 {
 			ki = -ki
@@ -171,7 +168,6 @@ func (c *evalCtx) trySeed(field models.Field, key string) (any, bool, error) {
 		return picked, true, nil
 	}
 
-	// Default seed mode: modulo-safe
 	row := getSeededRow(c.cache, c.seedIndex)
 	if row == nil {
 		return nil, false, nil
@@ -187,8 +183,6 @@ func (c *evalCtx) resolveReflection(field models.Field) (string, error) {
 		return "", fmt.Errorf("you must provide a 'target' to use reflection")
 	}
 
-	// Use output-key space primarily (alias if supplied on the referenced field),
-	// but also fall back to raw target in both scopes to avoid breaking existing configs.
 	if v, ok := c.generated[field.Target]; ok {
 		return v, nil
 	}
@@ -198,9 +192,6 @@ func (c *evalCtx) resolveReflection(field models.Field) (string, error) {
 		}
 	}
 
-	// Optional fallback: attempt name/alias mismatch by scanning generated keys.
-	// If the target matches a field.Name somewhere but was stored under alias, this helps.
-	// (Address later if you want a more deterministic mapping.)
 	for k, v := range c.generated {
 		if k == field.Target {
 			return v, nil
@@ -219,8 +210,6 @@ func (c *evalCtx) resolveReflection(field models.Field) (string, error) {
 	return "", fmt.Errorf("reflection target '%s' not found in previous fields", field.Target)
 }
 
-// evaluateField produces the final string for a field (inject/seed/fallback + modifier),
-// and writes into c.generated under outputKey(field).
 func (c *evalCtx) evaluateField(field models.Field) (string, error) {
 	lk := lookupKey(field) // for cache/source lookup
 	okey := outKey(field)  // for generated/output maps
@@ -443,7 +432,7 @@ func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
 	if r >= 100 {
 		return true
 	}
-	return rng.Intn(100) < r // 0..99 < r
+	return rng.Intn(100) < r
 }
 
 // JSON Evaluation
@@ -456,8 +445,6 @@ func GenerateNestedValues(
 	parentGenerated map[string]string,
 ) (map[string]string, error) {
 
-	// If you want selector support inside nested too, you can pass it down from the parent ctx
-	// via GenerateNestedValuesUnified. For now we keep this wrapper simple: no selector.
 	return GenerateNestedValuesUnified(
 		rowIndex,
 		seedIndex,
@@ -471,7 +458,6 @@ func GenerateNestedValues(
 	)
 }
 
-// Unified nested generator used by both top-level json generation and this wrapper.
 func GenerateNestedValuesUnified(
 	rowIndex, seedIndex int,
 	rng *rand.Rand,
