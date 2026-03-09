@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 
 	jsonstd "encoding/json" // if you already alias this elsewhere, keep consistent
@@ -311,7 +312,7 @@ func (c *evalCtx) evaluateField(field models.Field) (string, error) {
 			break
 		}
 
-		repeat := field.Repeat
+		repeat, _ := strconv.Atoi(field.Repeat)
 		if repeat <= 0 {
 			repeat = 1
 		}

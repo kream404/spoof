@@ -82,7 +82,7 @@ type Field struct {
 	Rate       *int    `json:"rate,omitempty,string"`
 	Regex      string  `json:"regex,omitempty"`
 	Fields     []Field `json:"fields,omitempty"`
-	Repeat     int     `json:"repeat,omitempty"`
+	Repeat     string  `json:"repeat,omitempty"`
 	Skip       bool    `json:"skip,omitempty"`
 }
 
