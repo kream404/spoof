@@ -90,6 +90,38 @@ func LoadProfiles(filepath string) (*models.Profiles, error) {
 	return &profiles, nil
 }
 
+func ReadJSONAsMap(filePath string) ([]map[string]any, error) {
+	raw, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read json file: %w", err)
+	}
+
+	raw = []byte(strings.TrimSpace(string(raw)))
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("json file is empty")
+	}
+
+	// Case 1: top-level array of objects
+	if raw[0] == '[' {
+		var rows []map[string]any
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return nil, fmt.Errorf("unmarshal json array: %w", err)
+		}
+		return rows, nil
+	}
+
+	// Case 2: top-level single object
+	if raw[0] == '{' {
+		var row map[string]any
+		if err := json.Unmarshal(raw, &row); err != nil {
+			return nil, fmt.Errorf("unmarshal json object: %w", err)
+		}
+		return []map[string]any{row}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported json structure: expected object or array of objects")
+}
+
 func ToJSONString(data any) (string, error) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {

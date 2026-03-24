@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/kream404/spoof/services/logger"
 	"github.com/shopspring/decimal"
 )
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 -]+`)
 
 type evalCtx struct {
 	// row state
@@ -75,16 +78,52 @@ func getSeededRow(cache []map[string]any, seedIndex int) map[string]any {
 	return cache[idx]
 }
 
+func (c *evalCtx) mergedSourceRows(field models.Field) []map[string]any {
+	logger.Debug("merging sources", "field", field.Name, "sources", field.Source)
+	if len(field.Source) == 0 {
+		return nil
+	}
+
+	var merged []map[string]any
+
+	for _, src := range field.Source {
+		if src == "" {
+			continue
+		}
+
+		rows, ok := c.fieldSources[src]
+		if !ok || len(rows) == 0 {
+			continue
+		}
+
+		merged = append(merged, rows...)
+	}
+
+	return merged
+}
+
 func (c *evalCtx) tryInjectFromSource(field models.Field, key string) (any, bool) {
-	if field.Source == "" || !strings.Contains(field.Source, ".csv") {
+	if len(field.Source) == 0 {
 		return nil, false
 	}
+
+	hasSupportedSource := false
+	for _, src := range field.Source {
+		if strings.Contains(src, ".csv") || strings.Contains(src, ".json") {
+			hasSupportedSource = true
+			break
+		}
+	}
+	if !hasSupportedSource {
+		return nil, false
+	}
+
 	if c.shouldInject != nil && !c.shouldInject(field, c.rng) {
 		return nil, false
 	}
 
-	rows, ok := c.fieldSources[field.Source]
-	if !ok || len(rows) == 0 {
+	rows := c.mergedSourceRows(field)
+	if len(rows) == 0 {
 		return nil, false
 	}
 
@@ -223,6 +262,7 @@ func (c *evalCtx) evaluateField(field models.Field) (string, error) {
 			return "", fmt.Errorf("modifier failed for field %s: %w", field.Name, err)
 		}
 		c.generated[okey] = out
+		out = nonAlphanumericRegex.ReplaceAllString(out, "") //cleans array strings / special chars
 		return out, nil
 	}
 
@@ -419,7 +459,7 @@ func applyModifier(val string, field models.Field) (string, error) {
 }
 
 func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
-	if field.Source == "" {
+	if field.Source == nil {
 		return false
 	}
 	// default to 100% if rate is omitted
@@ -535,4 +575,69 @@ func GenerateValues(
 	}
 
 	return record, generatedFields, nil
+}
+
+func GenerateJSONObject(
+	file models.Entity,
+	cache []map[string]any,
+	fieldSources map[string][]map[string]any,
+	rowIndex int,
+	seedIndex int,
+	rng *rand.Rand,
+) (map[string]any, map[string]string, error) {
+
+	obj := make(map[string]any, len(file.Fields))
+	generatedFields := make(map[string]string, len(file.Fields))
+
+	ctx := evalCtx{
+		rowIndex:        rowIndex,
+		seedIndex:       seedIndex,
+		rng:             rng,
+		cache:           cache,
+		fieldSources:    fieldSources,
+		generated:       generatedFields,
+		parentGenerated: nil,
+		shouldInject:    shouldInjectFromSource,
+	}
+
+	if file.CacheConfig != nil {
+		ctx.seedSelector = file.CacheConfig.SeedSelector
+	}
+
+	nonSkipped := make([]models.Field, 0, len(file.Fields))
+
+	for _, field := range file.Fields {
+		val, err := ctx.evaluateField(field)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if field.Skip {
+			continue
+		}
+
+		nonSkipped = append(nonSkipped, field)
+		obj[field.Name] = coerceJSONValue(val, field)
+	}
+
+	if len(nonSkipped) == 1 && nonSkipped[0].Type == "json" {
+		if unwrapped, ok := obj[nonSkipped[0].Name].(map[string]any); ok {
+			return unwrapped, generatedFields, nil
+		}
+	}
+
+	return obj, generatedFields, nil
+}
+
+func coerceJSONValue(val string, field models.Field) any {
+	switch field.Type {
+	case "json":
+		var parsed any
+		if err := jsonstd.Unmarshal([]byte(val), &parsed); err == nil {
+			return parsed
+		}
+		return val
+	default:
+		return val
+	}
 }

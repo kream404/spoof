@@ -22,6 +22,7 @@ import (
 	"github.com/kream404/spoof/models"
 	"github.com/kream404/spoof/services/database"
 	"github.com/kream404/spoof/services/evaluator" // ✅ new
+	json_parser "github.com/kream404/spoof/services/json"
 	log "github.com/kream404/spoof/services/logger"
 	s3c "github.com/kream404/spoof/services/s3"
 )
@@ -81,7 +82,12 @@ func processOneFile(ctx context.Context, file models.Entity, outDir string, forc
 	)
 
 	if file.Fields != nil {
-		localPath, err = generateCSV(file, outDir, acc)
+		ext := strings.ToLower(filepath.Ext(file.Config.FileName))
+		if ext == ".json" {
+			localPath, err = generateJSON(file, outDir, acc)
+		} else {
+			localPath, err = generateCSV(file, outDir, acc)
+		}
 	}
 
 	if err != nil {
@@ -267,7 +273,6 @@ func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
 	)
 
 	if config != nil && (config.Source != "" || config.Statement != "") {
-		log.Debug("Loading CSV cache", "source", config.Source)
 
 		switch {
 		case strings.HasPrefix(config.Source, "s3://"):
@@ -280,10 +285,16 @@ func LoadCache(config *models.CacheConfig) ([]map[string]any, error) {
 				return nil, fmt.Errorf("load cache from s3: %w", err)
 			}
 
-		case strings.Contains(config.Source, ".csv") && !strings.HasPrefix(config.Source, "s3://"):
+		case strings.Contains(strings.ToLower(config.Source), ".csv") && !strings.HasPrefix(config.Source, "s3://"):
 			cache, _, _, err = ReadCSVAsMap(config.Source)
 			if err != nil {
 				return nil, fmt.Errorf("read local csv cache: %w", err)
+			}
+
+		case strings.Contains(strings.ToLower(config.Source), ".json") && !strings.HasPrefix(config.Source, "s3://"):
+			cache, err = json_parser.ReadJSONAsMap(config.Source)
+			if err != nil {
+				return nil, fmt.Errorf("read local json cache: %w", err)
 			}
 
 		default:
@@ -363,16 +374,38 @@ func preloadFieldSources(fields []models.Field) fieldCache {
 
 func preloadFieldSourcesRecursive(fields []models.Field, fc fieldCache, seen map[string]struct{}) {
 	for _, f := range fields {
-		if f.Source != "" && strings.Contains(f.Source, ".csv") {
-			if _, ok := seen[f.Source]; !ok {
-				rows, _, _, err := ReadCSVAsMap(f.Source)
+		for _, src := range f.Source {
+			src = strings.TrimSpace(src)
+			if src == "" {
+				continue
+			}
+
+			source := strings.ToLower(src)
+			if _, ok := seen[src]; ok {
+				continue
+			}
+
+			switch {
+			case strings.Contains(source, ".csv"):
+				rows, _, _, err := ReadCSVAsMap(src)
 				if err != nil {
 					log.Error("Failed to preload source CSV; will skip injection for this source",
-						"source", f.Source, "err", err)
+						"source", src, "err", err)
 				} else {
-					fc[f.Source] = rows
-					seen[f.Source] = struct{}{}
-					log.Debug("Preloaded CSV source", "source", f.Source, "rows", len(rows))
+					fc[src] = rows
+					seen[src] = struct{}{}
+					log.Debug("Preloaded CSV source", "source", src, "rows", len(rows))
+				}
+
+			case strings.Contains(source, ".json"):
+				rows, err := json_parser.ReadJSONAsMap(src)
+				if err != nil {
+					log.Error("Failed to preload source JSON; will skip injection for this source",
+						"source", src, "err", err)
+				} else {
+					fc[src] = rows
+					seen[src] = struct{}{}
+					log.Debug("Preloaded JSON source", "source", src, "rows", len(rows))
 				}
 			}
 		}
@@ -428,7 +461,6 @@ func withIndexSuffix(name string, i, count int) string {
 
 func validateEntityConfig(file models.Entity) error {
 	var missing []string
-
 	if file.Config.FileName == "" {
 		missing = append(missing, "config.fileName")
 	}
@@ -617,4 +649,71 @@ func MakeOutputDir(config models.Config) (*os.File, string, error) {
 		return nil, "", err
 	}
 	return file, outputFile, nil
+}
+
+func generateJSON(file models.Entity, outDir string, acc *OutputAccumulator) (string, error) {
+	var cacheIndex, rowIndex = 0, 1
+
+	log.Info("Generating JSON file", "file", file.Config.FileName)
+
+	cache, err := LoadCache(file.CacheConfig)
+	if err != nil {
+		return "", fmt.Errorf("could not load cache: %w", err)
+	}
+
+	outFile, localPath, err := makeOutputFile(outDir, file.Config.FileName)
+	if err != nil {
+		return "", fmt.Errorf("create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	fieldCaches := preloadFieldSources(file.Fields)
+	rng, seed := CreateRNGSeed(file.Config.Seed)
+
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = fmt.Sprintf(" Generating %s (%d rows)...", file.Config.FileName, file.Config.RowCount)
+	s.Start()
+	defer s.Stop()
+
+	rows := make([]map[string]any, 0, file.Config.RowCount)
+
+	for i := 0; i < file.Config.RowCount; i++ {
+		obj, generated, err := evaluator.GenerateJSONObject(
+			file,
+			cache,
+			map[string][]map[string]any(fieldCaches),
+			rowIndex,
+			cacheIndex,
+			rng,
+		)
+		if err != nil {
+			return "", fmt.Errorf("generate json row: %w", err)
+		}
+
+		if err := emitOutputHooks(file, generated, acc); err != nil {
+			return "", fmt.Errorf("output hook: %w", err)
+		}
+
+		rows = append(rows, obj)
+
+		cacheIndex++
+		rowIndex++
+
+		if len(cache) > 0 && cacheIndex >= len(cache) {
+			cacheIndex = 0
+		}
+
+		if i%500 == 0 {
+			s.Suffix = fmt.Sprintf(" Generating %s... (%d/%d)", file.Config.FileName, i, file.Config.RowCount)
+		}
+	}
+
+	enc := jsonstd.NewEncoder(outFile)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(rows); err != nil {
+		return "", fmt.Errorf("encode json: %w", err)
+	}
+
+	log.Info("JSON generated", "path", localPath, "seed", seed)
+	return localPath, nil
 }
