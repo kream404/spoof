@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type Config struct {
 	FileName       string `json:"file_name"`
@@ -58,32 +61,34 @@ type SeedSelector struct {
 	Keys   []string `json:"keys"`
 }
 
+type SourceList []string
+
 type Field struct {
-	Name       string  `json:"name"`
-	Alias      string  `json:"alias,omitempty"`
-	Type       string  `json:"type,omitempty"`
-	Modifier   string  `json:"modifier,omitempty"`
-	AutoInc    bool    `json:"auto_increment,omitempty"`
-	ForeignKey string  `json:"foreign_key,omitempty"`
-	Format     string  `json:"format,omitempty"`
-	Length     int     `json:"length,omitempty"`
-	Min        float64 `json:"min,omitempty"`
-	Max        float64 `json:"max,omitempty"`
-	Start      *int    `json:"start,omitempty"`
-	Value      string  `json:"value,omitempty"`
-	Values     string  `json:"values,omitempty"`
-	Interval   int64   `json:"interval,omitempty"`
-	Target     string  `json:"target,omitempty"`
-	Seed       bool    `json:"seed,omitempty"`
-	Selector   bool    `json:"selector,omitempty"`
-	Function   string  `json:"function,omitempty"`
-	Source     string  `json:"source,omitempty"`
-	Template   string  `json:"template,omitempty"`
-	Rate       *int    `json:"rate,omitempty,string"`
-	Regex      string  `json:"regex,omitempty"`
-	Fields     []Field `json:"fields,omitempty"`
-	Repeat     string  `json:"repeat,omitempty"`
-	Skip       bool    `json:"skip,omitempty"`
+	Name       string     `json:"name"`
+	Alias      string     `json:"alias,omitempty"`
+	Type       string     `json:"type,omitempty"`
+	Modifier   string     `json:"modifier,omitempty"`
+	AutoInc    bool       `json:"auto_increment,omitempty"`
+	ForeignKey string     `json:"foreign_key,omitempty"`
+	Format     string     `json:"format,omitempty"`
+	Length     int        `json:"length,omitempty"`
+	Min        float64    `json:"min,omitempty"`
+	Max        float64    `json:"max,omitempty"`
+	Start      *int       `json:"start,omitempty"`
+	Value      string     `json:"value,omitempty"`
+	Values     string     `json:"values,omitempty"`
+	Interval   int64      `json:"interval,omitempty"`
+	Target     string     `json:"target,omitempty"`
+	Seed       bool       `json:"seed,omitempty"`
+	Selector   bool       `json:"selector,omitempty"`
+	Function   string     `json:"function,omitempty"`
+	Source     SourceList `json:"source,omitempty"`
+	Template   string     `json:"template,omitempty"`
+	Rate       *int       `json:"rate,omitempty,string"`
+	Regex      string     `json:"regex,omitempty"`
+	Fields     []Field    `json:"fields,omitempty"`
+	Repeat     string     `json:"repeat,omitempty"`
+	Skip       bool       `json:"skip,omitempty"`
 }
 
 type Entity struct {
@@ -115,6 +120,22 @@ func (p Placeholder) MarshalJSON() ([]byte, error) {
 	}
 	s += "}"
 	return json.Marshal(s)
+}
+
+func (s *SourceList) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*s = SourceList{single}
+		return nil
+	}
+
+	var many []string
+	if err := json.Unmarshal(data, &many); err == nil {
+		*s = SourceList(many)
+		return nil
+	}
+
+	return fmt.Errorf("source must be a string or array of strings")
 }
 
 type BundleFile struct {
