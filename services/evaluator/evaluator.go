@@ -149,6 +149,11 @@ func (c *evalCtx) trySeed(field models.Field, key string) (any, bool, error) {
 		return nil, false, nil
 	}
 
+	// apply rate to cache seeding too
+	if c.shouldInject != nil && !c.shouldInject(field, c.rng) {
+		return nil, false, nil
+	}
+
 	// Selector mode: pick lookup key for this row, find cache row by selector column, read output column key.
 	if c.seedSelector != nil {
 		sel := c.seedSelector
@@ -459,21 +464,29 @@ func applyModifier(val string, field models.Field) (string, error) {
 }
 
 func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
-	if field.Source == nil {
+	hasSource := len(field.Source) > 0
+	hasSeed := field.Seed
+
+	if !hasSource && !hasSeed {
 		return false
 	}
+
 	// default to 100% if rate is omitted
 	if field.Rate == nil {
 		return true
 	}
-	r := *field.Rate
+
+	r := *field.Rate // should be float64
+
 	if r <= 0 {
 		return false
 	}
 	if r >= 100 {
 		return true
 	}
-	return rng.Intn(100) < r
+
+	// 🔥 key change: use float comparison
+	return rng.Float64()*100 < r
 }
 
 // JSON Evaluation

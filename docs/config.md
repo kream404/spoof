@@ -1,60 +1,29 @@
-## Config
+# Configuration
 
-Please reference the `sample.json` in the repo when consulting the documentation.
+## Top-Level Structure
+```
+{
+  "config": { ... },
+  "cache": { ... },
+  "fields": [ ... },
+  "postprocess": { ... }
+}
+```
+---
 
-### Cache Configuration
+# Execution Model
 
-The `cache` section of the configuration defines the connection parameters for a database and settings for reproducible data generation.
+Each field is evaluated in the following order:
 
-This section allows the tool to fetch data from an existing database using SQL statements, which can be helpful for integrating real data into your generated output.
+1. Source Injection
+2. Cache Seeding
+3. Fallback Generation
+
+This applies to both top-level and nested JSON fields.
 
 ---
 
-Here is an example of the `cache` section:
-
-```json
-"cache": {
-  "hostname": "localhost",
-  "port": "5432",
-  "username": "user",
-  "password": "password",
-  "name": "database",
-  "statement": "SELECT customerid, amount, customer_email FROM account.customer;"
-}
-```
-
-The cache can alternatively be populated using an sql statement sourced from a file using the `source` config attribute. The path should be relative to the execution directory.
-
-```json
-"cache": {
-  "source": "test/customer_cache.sql"
-}
-```
-
-The output file can also be seeded from an existing CSV file. This works the same as seeding from a database. Aliases can be used in the same manner.
-
-```json
-"cache": {
-  "source": "test/existing.csv"
-}
-```
-Alternatively the cache can be populated directly from a CSV or collection of CSV's in an S3 location. You can either pass a path to a single file, or a top level prefix. In the case of a prefix it will aggregate all files below the prefix and seed from the aggregated cache.
-
-```json
-"cache": {
-  "source": "s3://path/to/file.csv",
-  "region": "eu-west-2"
-},
-```
-
-Fields can also be seeded with a CSV cache specific to the given field. This is useful for adhoc injection from sources outside of usual operation. The injection can optionally be governed by a `rate` which is the precentage chance of the cache being used. If it misses it will fallback to the generic cache if enabled, and finally to generation logic.
-
-```json
-{ "name": "id", "type": "uuid", "source": "source/id_subset.csv", "rate": "50", "alias": "customerid"}
-```
-
-
-## Connection Profiles
+# Connection Profiles
 Connection profiles can be used to quickly seed data from different environments. Profiles are stored at `~/.config/spoof/profiles.ini` and contain connection variables for a specified environment.
 
 ```ini
@@ -76,335 +45,399 @@ spoof -c ./configs/sample.json -p local
 ```
 ---
 
-### Seed
+# Cache Configuration
 
-The file config can optionally be provisioned with a seed. This will be the seed used for all RNG operations in the generation, giving deterministic results.
+Defines how seed data is loaded.
 
-```json
-"config": {
-  "file_name": "testfile.csv",
-  "delimiter": "|",
-  "row_count": 6,
-  "include_headers": true,
-  "seed": "47e7f672-9c3d-4dd4-a151-6f5fd67f236f"
+## Database
+```
+"cache": {
+  "hostname": "localhost",
+  "port": "5432",
+  "username": "user",
+  "password": "password",
+  "name": "database",
+  "statement": "SELECT customerid, amount FROM account.customer;"
+}
+```
+## SQL File
+```
+"cache": {
+  "source": "test/customer_cache.sql"
+}
+```
+## CSV
+```
+"cache": {
+  "source": "test/existing.csv"
+}
+```
+## S3
+```
+"cache": {
+  "source": "s3://bucket/path/",
+  "region": "eu-west-2"
+```
+---
+
+# Seed Selector
+
+Lookup-based seeding instead of positional indexing.
+```
+"cache": {
+  "source": "output/standard_partners.csv",
+  "selector": { 
+    "column": "name",
+    "keys": [
+      "c1",
+      "c2",
+      "c3"
+    ]
+  }
+}
+```
+
+This will inject the value at a given column when `"selector": true` is applied to a field
+
+```
+{ 
+  "name": "customerid", 
+  "seed": true, 
+  "selector": true,
+  "alias": "id"
 },
 ```
+## Behaviour
 
-Any run without a seed will output the seed used in generation to the console, which can be used to replicate outputs.
+- Picks key per row
+- Finds matching cache row
+- Returns value from requested column
+
+## Errors
+
+- No match found
+- Multiple matches found
+- Output column missing
+
+---
+
+# Field Configuration
+```
+{
+  "name": "id",
+  "type": "uuid",
+  "seed": true,
+  "alias": "customerid"
+}
+```
+## Name vs Alias
+
+- name → output column
+- alias → lookup column (cache/source)
 
 ---
 
-## Postprocessing
-A `postprocessing` block can be provided in the json config to allow you to upload files generated directly to an s3 location. In the future this will also support encryption. To authenticate the upload you must be authenticated against the destination account. This will allow the tool to leverage your token in `~/.aws/credentials`. A working example of the config block can be seen below. The file name will be concatenated to the location, landing in a directory at the given location.
-
-```json
-  "postprocess": {
-    "enabled": true,
-    "location": "s3://{BUCKET_NAME}/{PATH}/{PREFIX}",
-    "region": "eu-west-2"
-  },
+# Source Injection
 ```
-
-Postprocessing also supports inserting/deleting the generated values to/from a database. When deleting from a database you must pass the type of the key you wish to delete on. To point it at a database you must pass a `connection profile`. To carry out a destrucive operation on the database you must pass the `--force` flag.
-
-```json
-  "postprocess": {
-    "enabled": true,
-    "operation": "insert",
-    "location": "database",
-    "schema": "account",
-    "table": "customer",
-    "headers": true
-  },
+{
+  "name": "id",
+  "type": "uuid",
+  "source": ["data.csv", "backup.json"],
+  "rate": 50
+}
 ```
+## Behaviour
 
-```json
-  "postprocess": {
-    "enabled": true,
-    "operation": "delete",
-    "location": "database",
-    "schema": "account",
-    "table": "customer",
-    "key": "id",
-    "type": "uuid",
-    "headers": true
-  },
-```
+- Multiple sources are merged
+- Supports CSV and JSON
+- Indexed via seedIndex
 
-## Field Types
+## Conditions
 
-When configuring your CSV generation, each field in the `fields` array represents a column with specific data logic. The name provided will be the name of the column in the output file.
+Injection only occurs if:
 
-Any field can be seeded from the database or an existing CSV using the following syntax. If you want to have the column name in the ouput differ from the column name of the database, you can pass an alias. This will be the database column, and the name will be the csv column.
-
-```json
-{ ... "name":"id", "seed":true, "alias":"customerid" }
-```
+- Source exists
+- File type is supported (.csv, .json)
+- Rate check passes
 
 ---
-### Supported field types:
+
+## Rate
+
+Controls probability of injection or seeding. If not provided it will seed at a 100% rate. If a rate is supplied, fallback configuration must be provided. This will determine the generation if it is a "cache miss"
+```
+{
+  "name": "code",
+  "seed": true,
+  "alias": "processcode",
+  "rate": "50",
+  "type": "number",
+  "length": 4
+},
+```
+## Behaviour
+
+- 0 → never inject
+- 100 → always inject
+- null → defaults to 100
+- Uses RNG comparison
+
 ---
 
-### `Override`
+# Field Types
 
-This will hardcode a value to the given input. The row will always contain the supplied value.
-
-```json
+## Override
+```
 { "name": "active", "value": "true" }
 ```
-
-This can also be used to create whitespace values in the output csv by providing an empty string for input.
-
-```json
-{ "name": "active", "value": "" }
+## Iterator
 ```
-
----
-
-### `iterator`
-
-Sequentially generates an increasing integer starting from 1.
-
-```json
-{ "name": "id", "type": "iterator" }
+{ "name": "id", "type": "iterator", "start": 100 }
 ```
-
-> Use this when you need a unique row identifier or simple sequence.
-
----
-### `uuid`
-
-Generates a uuid v7. This is not currently deterministic.
-
-```json
+## UUID
+```
 { "name": "id", "type": "uuid" }
 ```
-
----
-
-### alphanumeric
-
-Generates a random string value. This faker supports two modes:
-  - Pattern mode (recommended) — generate a value that matches a supplied regular expression.
-  - Legacy mode — generate a simple random alphanumeric string of a given length and case.
-
-You configure this with the type, regex, length, and format attributes.
-
-```json
-{ "name": "id", "type": "alphanumeric", "regex": "^1-[0-9]{10}-[0-9]{10}$"  },
+## Alphanumeric
 ```
-
----
-
-### `range`
-
-Selects a random value from a defined set of options.
-
-```json
-{ "name": "customerstatusid", "type": "range", "values": "1, 2, 3, 4, 5, 6" }
+{ "name": "code", "type": "alphanumeric", "regex": "^A[0-9]{5}$" }
 ```
-
-> Ideal for enums, status codes, or controlled categories. Can handle both numbers and strings.
-
----
-
-### `foreach`
-
-Iterates through a defined set of options sequentially. Loops back to the start if the row count exceeds the length of values. Can handle both numbers and strings.
-
-```json
-{ "name": "customerstatusid", "type": "foreach", "values": "ACTIVE, INACTIVE, SUSPENDED, CLOSED" }
+## Range
 ```
-
----
-
-### `number`
-
-Generates a random floating-point number between a minimum and maximum. An optional format can be passed to specify the number of decimal places. This will default to 0 if not provided.
-
-```json
-{ "name": "amount", "type": "number", "format": "2", "min": -2000.00, "max": 2000.00 },
+{ "name": "status", "type": "range", "values": "1,2,3" }
 ```
-
-If you need to generate a random number of a given length, you can pass a `length` attribute. This will generate a random number with a fixed number of digits.
-
-```json
-{ "name": "code", "type": "number", "length": 14 },
+## Foreach
 ```
-
----
-
-### `timestamp`
-
-Creates a timestamp using the current time formatted with Go-style time syntax. You can optionally pass an interval to offset the time. This is provided as seconds and supports both positive and negative values.  This is not currently deterministic.
-
-```json
-{ "name": "updated_at", "type": "timestamp", "interval": -604800 , "format": "02-01-06 15:04:05" }
+{ "name": "status", "type": "foreach", "values": "A,B,C" }
 ```
+Sequentially cycles values per row.
 
-> Supports custom formatting using [Go time layouts](https://pkg.go.dev/time#pkg-constants).
+## Number
+```
+{ "name": "amount", "type": "number", "min": 0, "max": 100 }
+```
+Supports:
+- min/max range
+- length-based generation
+- decimal formatting
 
----
-### `email`
+## Timestamp
+```
+{
+  "name": "created",
+  "type": "timestamp",
+  "format": "2006-01-02"
+}
+```
+Supports:
+- interval offsets
+- function-driven generation
 
-Generates an email address. This currently just a random string.
-
-```json
-{ "name": "customer_email", "type": "email" }
+## Email
+```
+{ "name": "email", "type": "email" }
 ```
 ---
 
-### `reflection`
-
-Copies the value of another field. Can optionally modify numeric inputs by supplying a `modifier`. The target will be multiplied by the modifier.
-
-```json
-{ "name": "inverse", "type": "reflection", "target": "amount", "modifier": -1 }
+## Reflection
 ```
+{
+  "name": "inverse",
+  "type": "reflection",
+  "target": "amount",
+  "modifier": -1
+}
+```
+## Behaviour
 
-- `target`: name of the field to mirror.
-- `modifier`: allows transformation (e.g., numeric modification).
+- Reads from:
+  1. Current generated fields
+  2. Parent (for nested JSON)
+
+- Modifier multiplies numeric values
 
 ---
 
-### JSON
-JSON generation requires a template which denotes the object structure, field keys and how each field should be rendered in the output file. This is to allow numeric fields as well as strings. If no type is provided the field will be rendered as a string. You can also seed JSON fields using the same syntax as a regular field.
+# JSON Fields
 
-A sample template and configuration can be seen below.
-
-
-#### Template
-```json
+## Template Example
+```
 {
   "id": "${id:string}",
-  "createdAt": "${createdat:string}",
-  "amount": "${id:number}"
-
+  "amount": "${amount:number}"
 }
 ```
-
-#### Field configuration
-```json
+## Field Config
+```
 {
-  "name": "json_object",
+  "name": "payload",
   "type": "json",
-  "template": "templates/template.json",
-  "fields": [
-    {
-      "name": "id",
-      "type": "uuid"
-    },
-    {
-      "name": "createdat",
-      "type": "timestamp",
-      "format": "2006-01-02T15:04:05",
-      "function": "sin:period=0.0001,dir=past,interval=1d,amplitude=3,jitter=0.005,jitter_type=scale"
-    },
-    {
-      "name": "amount",
-      "format": "2",
-      "min": 1,
-      "max": 250,
-      "function": "exponential:scale=9,side=low"
-    },
-    {
-      "name": "accountid",
-      "seed": true,
-      "source": "output/accounts.csv",
-      "alias": "id",
-    },
-  ]
+  "template": "template.json",
+  "fields": [ ... ]
 }
 ```
+---
+
+## JSON Root Types
+
+### Object Root
+
+Produces:
+```
+{ "id": "...", "amount": 10 }
+```
+---
+
+### Array Root
+
+If template starts with '[':
+```
+[
+  { "id": "${id}" }
+]
+```
+## Repeat
+```
+{ "repeat": "3" }
+```
+Produces:
+
+[
+  {...},
+  {...},
+  {...}
+]
 
 ---
 
-## Functions
-Function strings can be used to drive how a supported faker generates its values. This can be used to create psuedo-trends accross the output file
+## Nested Evaluation
 
-**How it works**
+- Each JSON field runs in its own evaluation context
+- Parent fields are accessible (for reflection)
 
-The function string is parsed into a `name` and a `params` map.
+---
 
-A shared sampler produces a normalized value norm ∈ [0,1] for the chosen name (e.g. sin, random, exponential, linear, constant). Time-based functions accept a period.
-
-The normalized value is mapped to the field type:
-
-**Number:** norm → numeric value via MapNormalizedToFloat(norm, params, min, max).
-
-**Timestamp:** norm → duration offset via MapNormalizedToDuration(norm, params, interval, dir) and added to now.
-
-Optional modifiers (amplitude, center, clamp, jitter, etc.) alter sampling or mapping.
-
-
-### Supported functions
-
-`random` — uniform random in [0,1].
-
-`constant` — returns a fixed value (valuenorm in [0,1] or value as an absolute number/duration).
-
-`sin` — sinusoidal wave (time-based); accepts period and phase.
-
-`linear` — repeating linear ramp (sawtooth) over period.
-
-`exponential` — heavy-tailed generator; accepts scale and side.
-
-### Supported modifiers
-
-`period` — seconds (numeric) or duration string (7d, 72h, 1.5d) — used by sin/linear.
-
-`phase` — degrees (for sin).
-
-`dir` — for timestamps: future (default) | past | both. If omitted, a negative interval implies past.
-
-`interval` — base magnitude for timestamps (duration string like 7d or numeric seconds). Top-level interval (field root) is still supported for backwards compatibility. This will be deprecated in the near future.
-
-`amplitude` — multiplier applied to base magnitude or half-range (default 1.0).
-
-`center` — shifts the midpoint:`
-
-`clamp` — "true" (default) or "false". When false, mapped results may exceed [min,max] (for numbers) or the base timestamp window.
-
-
-### Jitter / outlier params
-You can also pass `jitter` paramaters to generate outliers outside of the normal function declaration. The rate of jitter generation can be controlled with the following parameters.
-
-`jitter` — probability (0..1) of producing an outlier on a Generate() call.
-
-`jitter_type` — scale | edge | spike | exponential.
-
-`jitter_amp` — multiplier used by scale and exponential (default 3.0).
-
-### Supported jitter types
-**scale:** multiplies the normalized value (pushes toward an edge).
-
-**edge:** returns exactly 0 or 1.
-
-**spike:** small spikes near an edge (e.g., [0,0.1] or [0.9,1]).
-
-### Function Examples ###
-There is a sample config file demonstrating what can be done with functions in at the `/docs/functions.json` path in this repository as well as the sample fields provided below.
-
-Uniform random timestamp in the past week
+## Modifier
 ```
-  { "type": "timestamp", "format": "2006-01-02", "function": "random:dir=past,interval=7d" }
+{
+  "name": "double",
+  "type": "reflection",
+  "target": "amount",
+  "modifier": 2
+}
 ```
+## Behaviour
 
-All rows same: exactly one year in the past
-```
-  { "type": "timestamp", "format": "2006-01-02", "function": "constant:dir=past,interval=52w" }
-```
-Sin wave mapped to number range, small jitter outliers
-```
-  { "type": "number", "min": 0, "max": 10000, "function": "sin:period=7d,amplitude=1.5,center=50,jitter=0.005,jitter_type=scale,jitter_amp=3" }
-```
+- Multiplies numeric values
+- Preserves decimal precision
 
-Heavy-tailed main generator, allow overshoot beyond bounds
-```
-  { "type": "number", "min": 0, "max": 1000, "function": "exponential:scale=3,side=high,clamp=false" }
-```
+---
 
-Constant 3 days ago (timestamp)
+# Functions
+
+Functions shape generated values.
+
+## Format
 ```
-  { "type": "timestamp", "format":"2006-01-02", "function":"constant:value=3d,dir=past" }
+name:param=value,param=value
 ```
+---
+
+## Supported Functions
+
+random — uniform distribution
+
+constant — fixed value
+
+sin — sinusoidal pattern
+
+linear — ramp pattern
+
+exponential — heavy-tailed distribution
+
+
+# Function Parameters
+
+- period (time duration or seconds)
+- phase (degrees)
+- amplitude
+- center
+- clamp (true/false)
+- dir (past, future, both)
+- interval (duration)
+
+---
+
+# Jitter
+
+Introduces outliers.
+```
+{
+  "jitter": 0.01,
+  "jitter_type": "scale"
+}
+```
+## Types
+
+- scale
+- edge
+- spike
+- exponential
+
+---
+
+# JSON Output Behaviour
+
+## Single JSON Field Optimization
+
+If only one JSON field exists:
+```
+{ "payload": {...} }
+```
+Output becomes:
+
+{ ... }
+
+---
+
+# Postprocessing
+
+## S3 Upload
+```
+"postprocess": {
+  "enabled": true,
+  "location": "s3://bucket/path",
+  "region": "eu-west-2"
+}
+```
+---
+
+## Database Insert
+```
+"postprocess": {
+  "operation": "insert",
+  "location": "database"
+}
+```
+---
+
+## Database Delete
+```
+"postprocess": {
+  "operation": "delete",
+  "key": "id",
+  "type": "uuid"
+}
+```
+---
+
+## Deterministic Runs
+```
+"config": {
+  "seed": "uuid"
+}
+```
+- Ensures reproducible output
+- Seed is generated and printed if not provided
+
+---
