@@ -485,7 +485,6 @@ func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
 		return true
 	}
 
-	// 🔥 key change: use float comparison
 	return rng.Float64()*100 < r
 }
 
