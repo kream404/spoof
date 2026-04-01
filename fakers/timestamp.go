@@ -112,7 +112,6 @@ func applyDateTimeOverrides(t time.Time, params map[string]string, dir string) t
 			tt = time.Date(tt.Year(), tt.Month(), tt.Day(), nh, nm, ns, 0, time.UTC)
 		}
 	}
-
 	return tt
 }
 

@@ -84,7 +84,7 @@ type Field struct {
 	Function   string     `json:"function,omitempty"`
 	Source     SourceList `json:"source,omitempty"`
 	Template   string     `json:"template,omitempty"`
-	Rate       *int       `json:"rate,omitempty,string"`
+	Rate       *float64   `json:"rate,omitempty,string"`
 	Regex      string     `json:"regex,omitempty"`
 	Fields     []Field    `json:"fields,omitempty"`
 	Repeat     string     `json:"repeat,omitempty"`
