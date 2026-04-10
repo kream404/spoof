@@ -34,6 +34,7 @@ var (
 	generate     bool
 	extractPath  string
 	injectVars   []string
+	inspect      bool
 )
 
 // Root command
@@ -41,6 +42,7 @@ var rootCmd = &cobra.Command{
 	Use:   "spoof",
 	Short: "A tool for generating CSV files.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		log.Debug("Starting spoof with arguments", "args", os.Args[1:])
 		if showVersion {
 			versionCmd.Run(cmd, args)
 			return nil
@@ -64,6 +66,10 @@ var rootCmd = &cobra.Command{
 
 		if generate {
 			return runGenerate(cmd)
+		}
+
+		if inspect {
+			return runInspect()
 		}
 
 		if err := loadConfig(); err != nil {
@@ -310,6 +316,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "db connection profile")
 	rootCmd.Flags().BoolVarP(&scaffold, "scaffold", "s", false, "generate new faker scaffold")
 	rootCmd.Flags().StringVarP(&scaffoldName, "scaffold_name", "n", "", "name of new faker")
+	rootCmd.Flags().BoolVar(&inspect, "inspect", false, "inspect config or bundle recursively without executing")
 }
 
 func Execute() {
