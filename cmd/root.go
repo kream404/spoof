@@ -42,7 +42,6 @@ var rootCmd = &cobra.Command{
 	Use:   "spoof",
 	Short: "A tool for generating CSV files.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Debug("Starting spoof with arguments", "args", os.Args[1:])
 		if showVersion {
 			versionCmd.Run(cmd, args)
 			return nil
