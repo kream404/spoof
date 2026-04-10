@@ -23,6 +23,67 @@ This applies to both top-level and nested JSON fields.
 
 ---
 
+# Bundles
+
+Bundles allow you to orchestrate sequential file generation. This facilitate complex data generation as we can seed directly from the ouput of previous steps. Best practice would be to have a `bundles` and `configs` directory at the same level and give a relative path to the config
+
+## Usage
+
+```bash
+spoof -c <path_to_bundle>
+```
+
+### Example
+
+```bash
+{
+  "files": [
+    {
+      "source": "configs/customers.json"
+    },
+    {
+      "source": "configs/bankaccount.json"
+    },
+    {
+      "source": "configs/cards.json"
+    },
+    {
+      "source": "configs/balance.json"
+    }
+  ]
+}
+```
+
+---
+
+# Inspect Mode
+
+Inspect mode provides a dry-run analysis of a bundle or config without executing any generation.
+
+## Usage
+
+```bash
+spoof --inspect -c <path> [-i VAR=value,...]
+```
+
+### Example
+
+```bash
+spoof --inspect -c bundles/bundle.json
+```
+
+## What Inspect Does
+
+- Traverses bundles and configs recursively
+- Resolves file paths using injected variables
+- Detects unresolved and missing variables
+- Builds an execution plan
+- Aggregates variable metadata from:
+  - inline template usage (`{{ VAR }}`)
+  - declared `variables` blocks in bundles/configs
+- Distinguishes required vs optional variables
+- Suggests a runnable command
+
 # Connection Profiles
 Connection profiles can be used to quickly seed data from different environments. Profiles are stored at `~/.config/spoof/profiles.ini` and contain connection variables for a specified environment.
 
@@ -85,7 +146,7 @@ Defines how seed data is loaded.
 Lookup-based seeding instead of positional indexing.
 ```
 "cache": {
-  "source": "output/standard_partners.csv",
+  "source": "output/companies.csv",
   "selector": { 
     "column": "name",
     "keys": [

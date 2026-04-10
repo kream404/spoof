@@ -8,7 +8,7 @@ import (
 type Config struct {
 	FileName       string `json:"file_name"`
 	Delimiter      string `json:"delimiter"`
-	RowCount       int    `json:"row_count,string"` // <-- allow quoted numbers
+	RowCount       int    `json:"row_count,string"`
 	FileCount      int    `json:"file_count,omitempty,string"`
 	IncludeHeaders bool   `json:"include_headers"`
 	Header         string `json:"header,omitempty"`
@@ -29,7 +29,7 @@ type Postprocess struct {
 	HasHeader bool     `json:"headers,omitempty"`
 	TrimSpace bool     `json:"trim,omitempty"`
 	Columns   []string `json:"columns,omitempty"`
-	BatchSize int      `json:"batch,string,omitempty"` // already string-coerced
+	BatchSize int      `json:"batch,string,omitempty"`
 }
 
 type Profiles struct {
@@ -101,11 +101,34 @@ type Entity struct {
 }
 
 type FileConfig struct {
-	Files []Entity `json:"files"`
+	Metadata  *ConfigMetadata        `json:"metadata,omitempty"`
+	Variables map[string]VariableDoc `json:"variables,omitempty"`
+	Files     []Entity               `json:"files"`
 }
 
 type Bundle struct {
-	Files []BundleFile `json:"files"`
+	Metadata  *BundleMetadata        `json:"metadata,omitempty"`
+	Variables map[string]VariableDoc `json:"variables,omitempty"`
+	Files     []BundleFile           `json:"files"`
+}
+
+type ConfigMetadata struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type BundleMetadata struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type VariableDoc struct {
+	Required      bool     `json:"required,omitempty"`
+	Type          string   `json:"type,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Example       string   `json:"example,omitempty"`
+	Default       string   `json:"default,omitempty"`
+	AllowedValues []string `json:"allowed_values,omitempty"`
 }
 
 type Placeholder struct {
