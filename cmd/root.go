@@ -233,6 +233,10 @@ func loadConfig() error {
 		return errors.New("no files found in configuration")
 	}
 
+	if err := applyVarsToReferencedSQL(&loaded, varsMap); err != nil {
+		return err
+	}
+
 	if profile != "" {
 		if err := applyProfile(&loaded, profile); err != nil {
 			return err
@@ -248,6 +252,47 @@ func applyVars(raw []byte, varsMap map[string]string) ([]byte, error) {
 		return raw, nil
 	}
 	return json_service.PerformTokenReplacement(raw, varsMap)
+}
+
+func applyVarsToReferencedSQL(fc *models.FileConfig, varsMap map[string]string) error {
+	if len(varsMap) == 0 {
+		return nil
+	}
+
+	for i := range fc.Files {
+		f := &fc.Files[i]
+
+		if f.CacheConfig == nil {
+			continue
+		}
+
+		if strings.TrimSpace(f.CacheConfig.Statement) != "" {
+			injected, err := applyVars([]byte(f.CacheConfig.Statement), varsMap)
+			if err != nil {
+				return fmt.Errorf("variable injection failed for inline SQL in file[%d]: %w", i, err)
+			}
+			f.CacheConfig.Statement = string(injected)
+		}
+
+		if strings.TrimSpace(f.CacheConfig.Source) != "" && strings.Contains(strings.ToLower(f.CacheConfig.Source), ".sql") {
+			sqlPath := strings.TrimSpace(f.CacheConfig.Source)
+
+			rawSQL, err := os.ReadFile(sqlPath)
+			if err != nil {
+				return fmt.Errorf("failed to read SQL file %q: %w", sqlPath, err)
+			}
+
+			injected, err := applyVars(rawSQL, varsMap)
+			if err != nil {
+				return fmt.Errorf("variable injection failed for SQL file %q: %w", sqlPath, err)
+			}
+
+			// Store injected SQL back into the config so downstream code executes it
+			f.CacheConfig.Statement = string(injected)
+		}
+	}
+
+	return nil
 }
 
 func applyProfile(fc *models.FileConfig, name string) error {
