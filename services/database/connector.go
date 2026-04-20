@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kream404/spoof/models"
+	"github.com/kream404/spoof/services/logger"
 	log "github.com/kream404/spoof/services/logger"
 
 	_ "github.com/lib/pq"
@@ -43,30 +44,42 @@ func (d *DBConnector) CloseConnection() {
 
 func (d *DBConnector) LoadCache(config models.CacheConfig) ([]map[string]any, error) {
 	var result []map[string]any
+
 	db, err := NewDBConnector().OpenConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.CloseConnection()
 
-	log.Debug("Populating cache with file", "path", config.Source)
+	if strings.TrimSpace(config.Statement) != "" {
+		log.Debug("Populating cache with compiled statement")
+		log.Debug("Cache statement", "sql", config.Statement)
 
-	if config.Source != "" {
+		result, err = db.FetchRows(config.Statement)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch rows: %w", err)
+		}
+		return result, nil
+	}
+
+	if strings.TrimSpace(config.Source) != "" {
+		log.Debug("Populating cache from file", "path", config.Source)
+
 		sql, err := loadSQLFromFile(config.Source)
 		if err != nil {
 			return nil, err
 		}
-		result, _ = db.FetchRows(sql)
-	} else if config.Statement != "" {
-		log.Debug("Cache statement ", "sql", config.Statement)
-		result, err = db.FetchRows(config.Statement)
 
+		log.Debug("Cache SQL loaded from file", "sql", sql)
+
+		result, err = db.FetchRows(sql)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch rows: %w", err)
 		}
+		return result, nil
 	}
 
-	return result, nil
+	return nil, fmt.Errorf("no cache SQL provided: both statement and source are empty")
 }
 
 func loadSQLFromFile(path string) (string, error) {
@@ -203,6 +216,7 @@ func (d *DBConnector) InsertRows(path string, config models.Entity) (int, error)
 		}
 
 		query := insertPrefix + strings.Join(valueGroups, ", ")
+		logger.Debug("Executing sql", "sql", query)
 		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 			return err
 		}
