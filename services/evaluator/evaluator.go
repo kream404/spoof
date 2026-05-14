@@ -14,6 +14,8 @@ import (
 	"github.com/kream404/spoof/services/json" // keep your existing json pkg alias as needed
 	"github.com/kream404/spoof/services/logger"
 	"github.com/shopspring/decimal"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 -]+`)
@@ -432,6 +434,11 @@ func (c *evalCtx) evaluateField(field models.Field) (string, error) {
 		return "", fmt.Errorf("modifier failed for field %s: %w", field.Name, err)
 	}
 
+	out, err = applyHash(out, field)
+	if err != nil {
+		return "", fmt.Errorf("hash failed for field %s: %w", field.Name, err)
+	}
+
 	c.generated[okey] = out
 	return out, nil
 }
@@ -461,6 +468,29 @@ func applyModifier(val string, field models.Field) (string, error) {
 		return val, nil
 	}
 	return modifier(val, field.Modifier)
+}
+
+func applyHash(val string, field models.Field) (string, error) {
+	if !field.Hash {
+		return val, nil
+	}
+
+	rounds := bcrypt.DefaultCost
+
+	if field.Rounds != nil {
+		rounds = *field.Rounds
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword(
+		[]byte(field.Pepper+val),
+		rounds,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(hashed), nil
 }
 
 func shouldInjectFromSource(field models.Field, rng *rand.Rand) bool {
