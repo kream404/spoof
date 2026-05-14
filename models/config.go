@@ -89,6 +89,11 @@ type Field struct {
 	Fields     []Field    `json:"fields,omitempty"`
 	Repeat     string     `json:"repeat,omitempty"`
 	Skip       bool       `json:"skip,omitempty"`
+
+	// hashing
+	Hash   bool   `json:"hash,omitempty"`
+	Pepper string `json:"pepper,omitempty"`
+	Rounds *int   `json:"rounds,omitempty"`
 }
 
 type Entity struct {

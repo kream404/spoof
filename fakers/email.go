@@ -8,7 +8,7 @@ import (
 	"github.com/kream404/spoof/models"
 )
 
-var domains = []string{"gmail.com", "outlook.com", "example.com"}
+var domains = []string{"gmail.com", "outlook.com", "spoof.com"}
 
 type EmailFaker struct {
 	datatype models.Type
@@ -46,7 +46,6 @@ func NewEmailFaker(format string, rng *rand.Rand) *EmailFaker {
 		rng:      rng,
 	}
 }
-
 
 func (f *EmailFaker) RandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
